@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.RotaenoUpdater" parent="Theme.Material3.DayNight">
+        <!-- Customize your theme here. -->
+
+<!--        <item name="colorPrimary">#607D8B</item> &lt;!&ndash; 淡蓝灰色 &ndash;&gt;-->
+<!--        <item name="colorPrimaryVariant">#455A64</item> &lt;!&ndash; 深蓝灰色 &ndash;&gt;-->
+<!--        <item name="colorOnPrimary">@color/white</item>-->
+<!--        &lt;!&ndash; Secondary brand color. &ndash;&gt;-->
+<!--        <item name="colorSecondary">#FFC107</item> &lt;!&ndash; 明黄色 &ndash;&gt;-->
+<!--        <item name="colorSecondaryVariant">#FFA000</item> &lt;!&ndash; 深黄色 &ndash;&gt;-->
+<!--        <item name="colorOnSecondary">@color/black</item>-->
+
+    </style>
+
+    <style name="Theme.RotaenoUpdater" parent="Base.Theme.RotaenoUpdater" />
+</resources>

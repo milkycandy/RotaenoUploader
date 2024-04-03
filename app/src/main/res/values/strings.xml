@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">RotaenoUploader</string>
+    <string name="upload_google_play">上传Google Play版数据</string>
+    <string name="upload_taptap_global">上传TapTap全球版数据</string>
+    <string name="upload_taptap_china">上传TapTap国区版数据</string>
+    <string name="objectid_textview">objectId (点击复制) :</string>
+    <string name="log_title">Log:</string>
+    <string name="about_developer">大块牛奶糖233</string>
+    <string name="upload_manually_select">手动选择目录上传</string>
+</resources>
