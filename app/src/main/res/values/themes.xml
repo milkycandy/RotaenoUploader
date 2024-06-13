@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.RotaenoUpdater" parent="Theme.Material3.DayNight">
+    <style name="Base.Theme.RotaenoUpdater" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowTranslucentNavigation">true</item>
         <!-- Customize your theme here. -->
 
 <!--        <item name="colorPrimary">#607D8B</item> &lt;!&ndash; 淡蓝灰色 &ndash;&gt;-->
@@ -11,6 +12,10 @@
 <!--        <item name="colorSecondaryVariant">#FFA000</item> &lt;!&ndash; 深黄色 &ndash;&gt;-->
 <!--        <item name="colorOnSecondary">@color/black</item>-->
 
+    </style>
+
+    <style name="Widget.CircularProgressIndicator" parent="Widget.Material3.CircularProgressIndicator">
+        <item name="indicatorColor">?attr/colorPrimary</item>
     </style>
 
     <style name="Theme.RotaenoUpdater" parent="Base.Theme.RotaenoUpdater" />
