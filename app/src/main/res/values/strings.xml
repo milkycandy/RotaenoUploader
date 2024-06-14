@@ -13,4 +13,9 @@
     <string name="settings_button">完成</string>
     <string name="title_activity_settings">SettingsActivity</string>
     <string name="upload_icon_description">表示上传的图标</string>
+    <string name="upload_game_data">上传游戏数据</string>
+    <string name="last_update">上次更新于</string>
+    <string name="tap_cn">Tap 国服</string>
+    <string name="tap_global">Tap 国际</string>
+    <string name="google_ver">Google 版</string>
 </resources>

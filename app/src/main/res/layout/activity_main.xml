@@ -65,13 +65,13 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
-                    android:paddingStart="16dp">
+                    android:paddingHorizontal="16dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingVertical="4dp"
-                        android:text="上传游戏数据"
+                        android:text="@string/upload_game_data"
                         android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
 
                     <TextView
@@ -79,7 +79,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingVertical="4dp"
-                        android:text="上次更新于"
+                        android:text="@string/last_update"
                         android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
                 </LinearLayout>
 
@@ -88,7 +88,7 @@
 
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/toggleButton"
-            android:layout_width="320dp"
+            android:layout_width="335dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -102,7 +102,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Tap 国服" />
+                android:text="@string/tap_cn" />
 
             <Button
                 android:id="@+id/buttonGlobal"
@@ -110,7 +110,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Tap 全球" />
+                android:text="@string/tap_global" />
 
             <Button
                 android:id="@+id/buttonPlay"
@@ -118,7 +118,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Play 版" />
+                android:text="@string/google_ver" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
 
