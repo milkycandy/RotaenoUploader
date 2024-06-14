@@ -1,0 +1,38 @@
+<PreferenceScreen
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Remote Server Address -->
+    <PreferenceCategory
+        android:title="服务器">
+
+        <EditTextPreference
+            app:key="remote_server_address"
+            android:title="自定义远程服务器地址"
+            android:summary="输入Bot服务器地址（留空为默认）"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <!-- Data Access Bypass -->
+    <PreferenceCategory
+        android:title="高级">
+
+        <SwitchPreferenceCompat
+            app:key="data_access_bypass"
+            android:title="尝试绕过data访问限制"
+            android:summary="适用于Android 11及以上" />
+
+    </PreferenceCategory>
+
+    <!-- Developer Info -->
+    <PreferenceCategory
+        android:title="关于">
+
+        <Preference
+            android:title="开发者"
+            android:summary="大块牛奶糖" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

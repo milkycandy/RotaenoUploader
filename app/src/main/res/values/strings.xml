@@ -7,4 +7,10 @@
     <string name="log_title">Log:</string>
     <string name="about_developer">哔哩哔哩：大块牛奶糖233</string>
     <string name="upload_manually_select">手动选择目录上传</string>
+    <string name="settings">设置</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_message">根据下载渠道要求，您的游戏数据将上传至指定的服务器处理。\n\n这里暂时没什么可设置的</string>
+    <string name="settings_button">完成</string>
+    <string name="title_activity_settings">SettingsActivity</string>
+    <string name="upload_icon_description">表示上传的图标</string>
 </resources>

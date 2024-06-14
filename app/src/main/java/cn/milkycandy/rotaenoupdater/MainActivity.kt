@@ -1,33 +1,34 @@
 package cn.milkycandy.rotaenoupdater
 
 import android.annotation.SuppressLint
-import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.Settings
 import android.util.Base64
 import android.util.Log
+import android.util.Patterns
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
-import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import android.provider.Settings
-import android.view.Window
-import android.view.WindowManager
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
+import androidx.preference.PreferenceManager
+import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
@@ -41,26 +42,31 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
+
+@Suppress("DEPRECATION")
 @SuppressLint("SetTextI18n")
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var dataButton: Button
-    private lateinit var dataButtonPlay: Button
-    private lateinit var dataButtonTapGlobal: Button
     private lateinit var textViewLog: TextView
+    private lateinit var textViewLastUploadTime: TextView
     private lateinit var textViewObjectId: TextView
-    private lateinit var textViewDeveloper: TextView
     private lateinit var progressBar: ProgressBar
-    private var developerUrl: String? = null
 
-    private val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 1002
+    private lateinit var toggleGroup: MaterialButtonToggleGroup
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        setSupportActionBar(findViewById(R.id.toolbar))
+
         // Ensure the window content fits the system windows
         WindowCompat.setDecorFitsSystemWindows(window, false)
         // Apply window insets to the main layout
@@ -71,61 +77,150 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        dataButtonPlay = findViewById(R.id.button_data_play)
-        dataButtonTapGlobal = findViewById(R.id.button_data_tap_global)
-        dataButton = findViewById(R.id.button_data)
+
         textViewLog = findViewById(R.id.textViewLogContent)
         textViewObjectId = findViewById(R.id.textViewObjectId)
-        textViewDeveloper = findViewById(R.id.textViewDeveloper)
         progressBar = findViewById(R.id.progressBar)
+        toggleGroup = findViewById(R.id.toggleButton)
+        textViewLastUploadTime = findViewById(R.id.lastUploadTime)
 
-        // 检查并请求权限
+        // 恢复用户的选择状态
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val selectedButtonId =
+            sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
+        if (selectedButtonId != View.NO_ID) {
+            toggleGroup.check(selectedButtonId)
+        }
+
+        toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                sharedPreferences.edit {
+                    putInt(PREF_KEY_SELECTED_BUTTON, checkedId)
+                }
+            }
+        }
+
+        showLastUploadTime()
+
+        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(
+            applicationContext
+        )
+        // 检查是否已经写入过这个设置
+        val isDataAccessBypassWritten = settingsPreferences.getBoolean("data_access_bypass_written", false)
+
+        // 如果尚未写入过，并且系统版本是安卓11及以上，则写入true，并设置写入标记
+        if (!isDataAccessBypassWritten && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            settingsPreferences.edit()
+                .putBoolean("data_access_bypass", true)
+                .putBoolean("data_access_bypass_written", true)
+                .apply()
+        }
+
+        requestPermissions()
+
+        textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
+
+        val cardUpload = findViewById<View>(R.id.card_upload)
+        cardUpload.setOnClickListener {
+            if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
+            val checkedButtonId = toggleGroup.checkedButtonId
+            if (checkedButtonId == View.NO_ID) {
+                Snackbar.make(it, "请先选择一个版本", Snackbar.LENGTH_LONG).show()
+            } else {
+                // 读取data_access_bypass的值
+                val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
+                val gamePath = if (dataAccessBypass) {
+                    when (checkedButtonId) {
+                        R.id.buttonPlay -> "Andro\u200Bid/data/com.xd.rotaeno.googleplay"
+                        R.id.buttonGlobal -> "Andro\u200Bid/data/com.xd.rotaeno.tapio"
+                        R.id.buttonChina -> "Andro\u200Bid/data/com.xd.rotaeno.tapcn"
+                        else -> null
+                    }
+                } else {
+                    when (checkedButtonId) {
+                        R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
+                        R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
+                        R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
+                        else -> null
+                    }
+                }
+
+                if (gamePath != null) {
+                    getGameData(gamePath)
+                    // 保存用户的选择状态
+                    sharedPreferences.edit {
+                        putInt(PREF_KEY_SELECTED_BUTTON, checkedButtonId)
+                        putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
+                    }
+                }
+            }
+        }
+
+        val calendar = Calendar.getInstance()
+        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+        val month = calendar.get(Calendar.MONTH) + 1 // 月份是从0开始的，所以需要+1
+
+        // 检查当前日期是否是6月25日
+        if (month == 6 && dayOfMonth == 25) {
+            // 如果是6月25日，显示SnackBar
+            val view = findViewById<View>(android.R.id.content)
+            Snackbar.make(view, "你知道吗？\n今天是这个软件的开发者 大块牛奶糖 的生日", Snackbar.LENGTH_LONG).show()
+        }
+
+    }
+
+    private fun showLastUploadTime() {
+        // 显示上次上传时间
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastUploadTime = sharedPreferences.getLong(PREF_KEY_LAST_UPLOAD_TIME, 0L)
+        if (lastUploadTime != 0L) {
+            val lastUploadDate = Date(lastUploadTime)
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            runOnUiThread {
+                textViewLastUploadTime.text = "上次上传于: ${dateFormat.format(lastUploadDate)}"
+            }
+        } else {
+            runOnUiThread {
+                textViewLastUploadTime.text = "从未上传"
+            }
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.settings -> {
+                // 启动 SettingsActivity
+                val intent = Intent(this, SettingsActivity::class.java)
+                startActivity(intent)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun requestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限", Toast.LENGTH_SHORT).show()
-                requestManageExternalStoragePermission()
+                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG).show()
+                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                startActivityForResult(intent, MANAGE_EXTERNAL_STORAGE_REQUEST_CODE)
             }
         } else {
             // Android 11以下的权限请求
-            Toast.makeText(this, "系统版本为Android 11以下", Toast.LENGTH_SHORT).show()
+            val permissions = arrayOf(
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            requestPermissions(permissions, STORAGE_PERMISSION_REQUEST_CODE)
         }
-
-        dataButtonPlay.setOnClickListener { getGameData("Andro\u200Bid/data/com.xd.rotaeno.googleplay") }
-        dataButtonTapGlobal.setOnClickListener { getGameData("Andro\u200Bid/data/com.xd.rotaeno.tapio") }
-        dataButton.setOnClickListener { getGameData("Andro\u200Bid/data/com.xd.rotaeno.tapcn") }
-        textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
-        fetchAndDisplayDeveloperInfo()
-//        textViewDeveloper.setOnClickListener {
-//            // 检查developerUrl是否不为空
-//            developerUrl?.let { url ->
-//                // 判断是否为哔哩哔哩链接
-//                if (url.contains("bilibili.com")) {
-//                    // 构建一个Intent来尝试直接使用哔哩哔哩应用打开链接
-//                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-//                        setPackage("tv.danmaku.bili") // 指定哔哩哔哩包名
-//                    }
-//                    try {
-//                        startActivity(intent)
-//                    } catch (e: ActivityNotFoundException) {
-//                        // 哔哩哔哩应用不可用，回退到默认逻辑
-//                        fallbackToBrowser(url)
-//                    }
-//                } else {
-//                    // 不是哔哩哔哩链接，使用默认方式打开
-//                    fallbackToBrowser(url)
-//                }
-//            } ?: run {
-//                // 如果developerUrl为空，显示Toast消息
-//                Toast.makeText(this, "未获取到链接", Toast.LENGTH_LONG).show()
-//            }
-//        }
     }
 
-    private fun requestManageExternalStoragePermission() {
-        val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-        startActivityForResult(intent, MANAGE_EXTERNAL_STORAGE_REQUEST_CODE)
-    }
-
+    @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MANAGE_EXTERNAL_STORAGE_REQUEST_CODE) {
@@ -140,8 +235,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getGameData(path: String) {
+        // 显示当前手机型号、系统版本和Google安全补丁日期
+        val deviceManufacturer = Build.MANUFACTURER
+        val deviceModel = Build.MODEL
+        val androidVersion = Build.VERSION.RELEASE
+        val securityPatch = Build.VERSION.SECURITY_PATCH
+        appendLog("设备生产商：$deviceManufacturer\n型号: $deviceModel\n系统: Android $androidVersion\n安全补丁日期: $securityPatch")
         showLoading()
-        appendLog("尝试获取游戏数据...")
+        appendLog("正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
             val filePath = "/storage/emulated/0/$path/files/RotaenoLC/.userdata"
             Log.d("MainActivity", "File path: $filePath")
@@ -157,27 +258,30 @@ class MainActivity : AppCompatActivity() {
                     }
                     val gameSaveFileName = sha256ToHex("GameSave$objectId")
                     val gameSaveFilePath = "/storage/emulated/0/$path/files/$gameSaveFileName"
+                    Log.d("MainActivity", "GameSave file path: $gameSaveFilePath")
                     val gameSaveFile = File(gameSaveFilePath)
                     if (gameSaveFile.exists() && gameSaveFile.isFile) {
                         try {
-                            contentResolver.openInputStream(Uri.fromFile(gameSaveFile)).use { inputStream ->
-                                val fileContentBytes = inputStream?.readBytes()
-                                fileContentBytes?.let { bytes ->
-                                    val encodedContent = Base64.encodeToString(bytes, Base64.DEFAULT)
-                                    appendLog("POST request...")
-                                    postGameData(objectId, encodedContent)
-                                } ?: run {
-                                    appendLog("GameSave文件为空或无法读取")
-                                    hideLoading()
+                            contentResolver.openInputStream(Uri.fromFile(gameSaveFile))
+                                .use { inputStream ->
+                                    val fileContentBytes = inputStream?.readBytes()
+                                    fileContentBytes?.let { bytes ->
+                                        val encodedContent =
+                                            Base64.encodeToString(bytes, Base64.DEFAULT)
+                                        appendLog("POST request...")
+                                        postGameData(objectId, encodedContent)
+                                    } ?: run {
+                                        appendLog("GameSave文件为空或无法读取")
+                                        hideLoading()
+                                    }
                                 }
-                            }
                         } catch (e: IOException) {
                             appendLog("读取GameSave文件时出错：${e.message}")
                             Log.e("RotaenoUpdater", "Error reading GameSave file", e)
                             hideLoading()
                         }
                     } else {
-                        appendLog("GameSave文件不存在")
+                        appendLog("错误：GameSaveFile doesn't exist or isn't file")
                         hideLoading()
                     }
                 } catch (e: Exception) {
@@ -185,7 +289,7 @@ class MainActivity : AppCompatActivity() {
                     hideLoading()
                 }
             } else {
-                appendLog("文件不存在")
+                appendLog("失败，文件不存在或无法访问")
                 hideLoading()
             }
         }
@@ -211,8 +315,30 @@ class MainActivity : AppCompatActivity() {
 
             val requestBody =
                 jsonString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
+                applicationContext
+            )
+
+            var url = sharedPreferences.getString("remote_server_address", "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData")
+
+            if (url == "") {
+                url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
+            }
+            if (url == null || !Patterns.WEB_URL.matcher(url).matches()) {
+                appendLog("无效的服务器地址: $url")
+                hideLoading()
+                delayedCheck.cancel()
+                return@launch
+            }
+
+            if (url != "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData") {
+                appendLog("正在使用自定义Bot服务器")
+            }
+
             val request =
-                Request.Builder().url("http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData")
+                Request.Builder().url(url.toString())
                     .post(requestBody).build()
 
             val client = OkHttpClient()
@@ -222,6 +348,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 appendLog("来自Bot的回复: $responseBody")
+                showLastUploadTime()
                 hideLoading()
 
             } catch (e: IOException) {
@@ -270,42 +397,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun fetchAndDisplayDeveloperInfo() {
-        Log.d("RotaenoUploader", "Requesting developer information...")
-        CoroutineScope(Dispatchers.IO).launch {
-            val client = OkHttpClient()
-            val request = Request.Builder()
-                .url("https://gitee.com/milkycandy/app-cloud-control/raw/master/rotaeno_updater.json")
-                .build()
-
-            try {
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    val jsonData = response.body?.string()
-                    jsonData?.let {
-                        val jsonObject = JsonParser.parseString(it).asJsonObject
-                        val developerInfo = jsonObject.get("AboutDeveloper7").asString
-                        developerUrl = jsonObject.get("url").asString
-                        runOnUiThread {
-                            textViewDeveloper.text = developerInfo
-                        }
-                    }
-                } else {
-                    Log.e("RotaenoUploader", "Request for developer information failed.")
-                }
-            } catch (e: Exception) {
-                Log.e("RotaenoUploader", "Error fetching developer info.", e)
-            }
-        }
-    }
-
-    private fun fallbackToBrowser(url: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        try {
-            startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            // 如果没有应用可以处理这个Intent，显示Toast消息
-            Toast.makeText(this, "没有可以处理这个链接的应用", Toast.LENGTH_LONG).show()
-        }
+    //    private fun fetchAndDisplayDeveloperInfo() {
+//        Log.d("RotaenoUploader", "Requesting developer information...")
+//        CoroutineScope(Dispatchers.IO).launch {
+//            val client = OkHttpClient()
+//            val request = Request.Builder()
+//                .url("https://gitee.com/milkycandy/app-cloud-control/raw/master/rotaeno_updater.json")
+//                .build()
+//
+//            try {
+//                val response = client.newCall(request).execute()
+//                if (response.isSuccessful) {
+//                    val jsonData = response.body?.string()
+//                    jsonData?.let {
+//                        val jsonObject = JsonParser.parseString(it).asJsonObject
+//                        val developerInfo = jsonObject.get("AboutDeveloper7").asString
+//                        developerUrl = jsonObject.get("url").asString
+//                        runOnUiThread {
+//                            textViewDeveloper.text = developerInfo
+//                        }
+//                    }
+//                } else {
+//                    Log.e("RotaenoUploader", "Request for developer information failed.")
+//                }
+//            } catch (e: Exception) {
+//                Log.e("RotaenoUploader", "Error fetching developer info.", e)
+//            }
+//        }
+//    }
+    companion object {
+        private const val PREF_KEY_LAST_UPLOAD_TIME = "last_upload_time"
+        private const val PREF_KEY_SELECTED_BUTTON = "selected_button"
+        private const val PREFS_NAME = "RotaenoUpdaterPrefs"
+        private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 1002
+        private const val STORAGE_PERMISSION_REQUEST_CODE = 114
     }
 }
