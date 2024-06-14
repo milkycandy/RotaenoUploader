@@ -167,6 +167,12 @@ class MainActivity : AppCompatActivity() {
             Snackbar.make(view, "你知道吗？\n今天是这个软件的开发者 大块牛奶糖 的生日", Snackbar.LENGTH_LONG).show()
         }
 
+        // 显示当前手机型号、系统版本和Google安全补丁日期
+        val deviceManufacturer = Build.MANUFACTURER
+        val deviceModel = Build.MODEL
+        val androidVersion = Build.VERSION.RELEASE
+        val securityPatch = Build.VERSION.SECURITY_PATCH
+        appendLog("设备生产商：$deviceManufacturer\n型号: $deviceModel\n系统: Android $androidVersion\n安全补丁日期: $securityPatch")
     }
 
     private fun showLastUploadTime() {
@@ -235,12 +241,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getGameData(path: String) {
-        // 显示当前手机型号、系统版本和Google安全补丁日期
-        val deviceManufacturer = Build.MANUFACTURER
-        val deviceModel = Build.MODEL
-        val androidVersion = Build.VERSION.RELEASE
-        val securityPatch = Build.VERSION.SECURITY_PATCH
-        appendLog("设备生产商：$deviceManufacturer\n型号: $deviceModel\n系统: Android $androidVersion\n安全补丁日期: $securityPatch")
+
         showLoading()
         appendLog("正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
