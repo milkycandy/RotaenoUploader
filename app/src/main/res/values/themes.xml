@@ -18,5 +18,10 @@
         <item name="indicatorColor">?attr/colorPrimary</item>
     </style>
 
+    <style name="Preference.SwitchPreferenceCompat" parent="@style/Preference.SwitchPreferenceCompat.Material"
+        tools:ignore="ResourceCycle">
+        <item name="widgetLayout">@layout/preference_switch</item>
+    </style>
+
     <style name="Theme.RotaenoUpdater" parent="Base.Theme.RotaenoUpdater" />
 </resources>
