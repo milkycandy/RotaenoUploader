@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
             if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
             val checkedButtonId = toggleGroup.checkedButtonId
             if (checkedButtonId == View.NO_ID) {
-                Snackbar.make(it, "请先选择一个版本", Snackbar.LENGTH_LONG).show()
+                showSnackBar("请先选择一个版本")
             } else {
                 // 读取是否开启了data限制绕过(data_access_bypass的值)，如果开启则插入零宽空格以绕过限制
                 // 这个绕过方法并不适用于所有设备 仅在小米14 Pro HyperOS 1.0.42.0.UNBCNXM 安全更新2024-06-01 测试可用，其他设备没试，主要是没有
@@ -153,7 +153,7 @@ class MainActivity : AppCompatActivity() {
         val deviceModel = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
         val securityPatch = Build.VERSION.SECURITY_PATCH
-        appendLog("设备生产商：$deviceManufacturer | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
+        appendLog("设备：$deviceManufacturer | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
     }
 
     private fun showLastUploadTime() {
@@ -252,7 +252,7 @@ class MainActivity : AppCompatActivity() {
                                     fileContentBytes?.let { bytes ->
                                         val encodedContent =
                                             Base64.encodeToString(bytes, Base64.DEFAULT)
-                                        appendLog("POST request...")
+                                        appendLog("正在发送数据到服务器...")
                                         postGameData(objectId, encodedContent)
                                     } ?: run {
                                         appendLog("GameSave文件为空或无法读取")
@@ -301,23 +301,21 @@ class MainActivity : AppCompatActivity() {
             val sharedPreferences =
                 PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-            var url = sharedPreferences.getString(
-                "remote_server_address", "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
-            )
+            var url = sharedPreferences.getString("remote_server_address", "")
 
             // 留空就是默认
-            if (url == "") {
-                url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
-            }
-            if (url == null || !Patterns.WEB_URL.matcher(url).matches()) {
-                appendLog("无效的服务器地址: $url")
+            if (url == "" || url == null) {
+                showSnackBar("服务器地址未设置，请前往设置")
                 hideLoading()
                 delayedCheck.cancel()
                 return@launch
             }
-
-            if (url != "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData") {
-                appendLog("正在使用自定义Bot服务器")
+            if (!Patterns.WEB_URL.matcher(url).matches()) {
+                showSnackBar("服务器地址无效")
+                appendLog("无效的服务器地址: $url")
+                hideLoading()
+                delayedCheck.cancel()
+                return@launch
             }
 
             val request = Request.Builder().url(url.toString()).post(requestBody).build()
@@ -341,7 +339,7 @@ class MainActivity : AppCompatActivity() {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("objectId", text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(this, "已复制ObjectId到剪切板", Toast.LENGTH_SHORT).show()
+        showSnackBar("已复制ObjectId到剪切板")
     }
 
     private fun sha256ToHex(input: String): String {
@@ -356,6 +354,12 @@ class MainActivity : AppCompatActivity() {
             } else {
                 textViewLog.append(message)
             }
+        }
+    }
+
+    private fun showSnackBar(message: String) {
+        runOnUiThread {
+            Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
         }
     }
 
