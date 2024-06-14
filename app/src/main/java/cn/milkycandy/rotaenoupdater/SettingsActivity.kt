@@ -52,16 +52,12 @@ class SettingsActivity : AppCompatActivity() {
 
             // Set listeners for preference changes
             serverAddressPref?.setOnPreferenceChangeListener { preference, newValue ->
-                if (sharedPreferences != null) {
-                    sharedPreferences.edit().putString(preference.key, newValue as String).apply()
-                }
+                sharedPreferences?.edit()?.putString(preference.key, newValue as String)?.apply()
                 true
             }
 
             dataAccessBypassPref?.setOnPreferenceChangeListener { preference, newValue ->
-                if (sharedPreferences != null) {
-                    sharedPreferences.edit().putBoolean(preference.key, newValue as Boolean).apply()
-                }
+                sharedPreferences?.edit()?.putBoolean(preference.key, newValue as Boolean)?.apply()
                 true
             }
         }

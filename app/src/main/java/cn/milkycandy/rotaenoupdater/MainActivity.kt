@@ -47,7 +47,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-
 @Suppress("DEPRECATION")
 @SuppressLint("SetTextI18n")
 class MainActivity : AppCompatActivity() {
@@ -56,7 +55,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textViewLastUploadTime: TextView
     private lateinit var textViewObjectId: TextView
     private lateinit var progressBar: ProgressBar
-
     private lateinit var toggleGroup: MaterialButtonToggleGroup
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,16 +62,11 @@ class MainActivity : AppCompatActivity() {
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
         setSupportActionBar(findViewById(R.id.toolbar))
-
-        // Ensure the window content fits the system windows
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        // Apply window insets to the main layout
         val mainLayout = findViewById<View>(R.id.main)
         ViewCompat.setOnApplyWindowInsetsListener(mainLayout) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Set padding to handle system bars
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
@@ -86,12 +79,10 @@ class MainActivity : AppCompatActivity() {
 
         // 恢复用户的选择状态
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val selectedButtonId =
-            sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
+        val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
         if (selectedButtonId != View.NO_ID) {
             toggleGroup.check(selectedButtonId)
         }
-
         toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 sharedPreferences.edit {
@@ -102,32 +93,32 @@ class MainActivity : AppCompatActivity() {
 
         showLastUploadTime()
 
-        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(
-            applicationContext
-        )
+        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         // 检查是否已经写入过这个设置
-        val isDataAccessBypassWritten = settingsPreferences.getBoolean("data_access_bypass_written", false)
+        val isDataAccessBypassWritten =
+            settingsPreferences.getBoolean("data_access_bypass_written", false)
 
-        // 如果尚未写入过，并且系统版本是安卓11及以上，则写入true，并设置写入标记
+        // 如果尚未写入过即为首次启动，如果系统版本是安卓11及以上，则写入true（开启data限制绕过），并设置写入标记
         if (!isDataAccessBypassWritten && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            settingsPreferences.edit()
-                .putBoolean("data_access_bypass", true)
-                .putBoolean("data_access_bypass_written", true)
-                .apply()
+            settingsPreferences.edit().putBoolean("data_access_bypass", true)
+                .putBoolean("data_access_bypass_written", true).apply()
         }
 
         requestPermissions()
 
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
+        // 初始化上传MaterialCardView
         val cardUpload = findViewById<View>(R.id.card_upload)
         cardUpload.setOnClickListener {
+            // 如果进度条可见，即为正在上传，不响应点击
             if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
             val checkedButtonId = toggleGroup.checkedButtonId
             if (checkedButtonId == View.NO_ID) {
                 Snackbar.make(it, "请先选择一个版本", Snackbar.LENGTH_LONG).show()
             } else {
-                // 读取data_access_bypass的值
+                // 读取是否开启了data限制绕过(data_access_bypass的值)，如果开启则插入零宽空格以绕过限制
+                // 这个绕过方法并不适用于所有设备 仅在小米14 Pro HyperOS 1.0.42.0.UNBCNXM 安全更新2024-06-01 测试可用，其他设备没试，主要是没有
                 val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
                 val gamePath = if (dataAccessBypass) {
                     when (checkedButtonId) {
@@ -144,35 +135,25 @@ class MainActivity : AppCompatActivity() {
                         else -> null
                     }
                 }
-
                 if (gamePath != null) {
                     getGameData(gamePath)
-                    // 保存用户的选择状态
+                    // 保存上一次的上传时间
                     sharedPreferences.edit {
-                        putInt(PREF_KEY_SELECTED_BUTTON, checkedButtonId)
                         putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
                     }
                 }
             }
         }
+        checkDeveloperBirthday()
+        showDeviceInfo()
+    }
 
-        val calendar = Calendar.getInstance()
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-        val month = calendar.get(Calendar.MONTH) + 1 // 月份是从0开始的，所以需要+1
-
-        // 检查当前日期是否是6月25日
-        if (month == 6 && dayOfMonth == 25) {
-            // 如果是6月25日，显示SnackBar
-            val view = findViewById<View>(android.R.id.content)
-            Snackbar.make(view, "你知道吗？\n今天是这个软件的开发者 大块牛奶糖 的生日", Snackbar.LENGTH_LONG).show()
-        }
-
-        // 显示当前手机型号、系统版本和Google安全补丁日期
+    private fun showDeviceInfo() {
         val deviceManufacturer = Build.MANUFACTURER
         val deviceModel = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
         val securityPatch = Build.VERSION.SECURITY_PATCH
-        appendLog("设备生产商：$deviceManufacturer\n型号: $deviceModel\n系统: Android $androidVersion\n安全补丁日期: $securityPatch")
+        appendLog("设备生产商：$deviceManufacturer | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
     }
 
     private fun showLastUploadTime() {
@@ -187,7 +168,7 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             runOnUiThread {
-                textViewLastUploadTime.text = "从未上传"
+                textViewLastUploadTime.text = "从未上传过"
             }
         }
     }
@@ -205,6 +186,7 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
                 true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -212,7 +194,8 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG)
+                    .show()
                 val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 startActivityForResult(intent, MANAGE_EXTERNAL_STORAGE_REQUEST_CODE)
             }
@@ -230,6 +213,7 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == MANAGE_EXTERNAL_STORAGE_REQUEST_CODE) {
+            // 上面判断过一次了，但是这里不判断又会warning，那再判断一次好了，也挺保险的
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if (Environment.isExternalStorageManager()) {
                     Toast.makeText(this, "所有文件访问权限授予成功", Toast.LENGTH_SHORT).show()
@@ -241,7 +225,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getGameData(path: String) {
-
         showLoading()
         appendLog("正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
@@ -278,7 +261,7 @@ class MainActivity : AppCompatActivity() {
                                 }
                         } catch (e: IOException) {
                             appendLog("读取GameSave文件时出错：${e.message}")
-                            Log.e("RotaenoUpdater", "Error reading GameSave file", e)
+                            Log.e("RotaenoUploader", "Error reading GameSave file", e)
                             hideLoading()
                         }
                     } else {
@@ -300,7 +283,7 @@ class MainActivity : AppCompatActivity() {
     private fun postGameData(objectId: String, gameSaveData: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val delayedCheck = launch {
-                delay(6000)  // 等待5秒
+                delay(6000)
                 appendLog("目标服务器响应缓慢，仍在上传中...")
             }
 
@@ -310,20 +293,19 @@ class MainActivity : AppCompatActivity() {
 
             val jsonString = json.toString()
 
-//            runOnUiThread {
-//                appendLog("即将发送的数据: $jsonString")
-//            }
+//          appendLog("即将发送的数据: $jsonString")
 
             val requestBody =
                 jsonString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
+            val sharedPreferences =
+                PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
-                applicationContext
+            var url = sharedPreferences.getString(
+                "remote_server_address", "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
             )
 
-            var url = sharedPreferences.getString("remote_server_address", "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData")
-
+            // 留空就是默认
             if (url == "") {
                 url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
             }
@@ -338,31 +320,22 @@ class MainActivity : AppCompatActivity() {
                 appendLog("正在使用自定义Bot服务器")
             }
 
-            val request =
-                Request.Builder().url(url.toString())
-                    .post(requestBody).build()
+            val request = Request.Builder().url(url.toString()).post(requestBody).build()
 
             val client = OkHttpClient()
             try {
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string()
-
-
                 appendLog("来自Bot的回复: $responseBody")
                 showLastUploadTime()
-                hideLoading()
-
             } catch (e: IOException) {
-
                 appendLog("发送数据失败: ${e.message}")
-                hideLoading()
-
             } finally {
                 delayedCheck.cancel()
+                hideLoading()
             }
         }
     }
-
 
     private fun copyToClipboard(text: CharSequence) {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -398,38 +371,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //    private fun fetchAndDisplayDeveloperInfo() {
-//        Log.d("RotaenoUploader", "Requesting developer information...")
-//        CoroutineScope(Dispatchers.IO).launch {
-//            val client = OkHttpClient()
-//            val request = Request.Builder()
-//                .url("https://gitee.com/milkycandy/app-cloud-control/raw/master/rotaeno_updater.json")
-//                .build()
-//
-//            try {
-//                val response = client.newCall(request).execute()
-//                if (response.isSuccessful) {
-//                    val jsonData = response.body?.string()
-//                    jsonData?.let {
-//                        val jsonObject = JsonParser.parseString(it).asJsonObject
-//                        val developerInfo = jsonObject.get("AboutDeveloper7").asString
-//                        developerUrl = jsonObject.get("url").asString
-//                        runOnUiThread {
-//                            textViewDeveloper.text = developerInfo
-//                        }
-//                    }
-//                } else {
-//                    Log.e("RotaenoUploader", "Request for developer information failed.")
-//                }
-//            } catch (e: Exception) {
-//                Log.e("RotaenoUploader", "Error fetching developer info.", e)
-//            }
-//        }
-//    }
+    private fun checkDeveloperBirthday() {
+        val calendar = Calendar.getInstance()
+        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
+        val month = calendar.get(Calendar.MONTH) + 1 // 月份是从0开始的，所以需要+1
+
+        // 检查当前日期是否是6月25日
+        if (month == 6 && dayOfMonth == 25) {
+            // 如果是6月25日，显示SnackBar
+            val view = findViewById<View>(android.R.id.content)
+            Snackbar.make(
+                view, "你知道吗？\n今天是这个软件的开发者 大块牛奶糖 的生日", Snackbar.LENGTH_LONG
+            ).show()
+        }
+    }
+
     companion object {
         private const val PREF_KEY_LAST_UPLOAD_TIME = "last_upload_time"
         private const val PREF_KEY_SELECTED_BUTTON = "selected_button"
-        private const val PREFS_NAME = "RotaenoUpdaterPrefs"
+        private const val PREFS_NAME = "RotaenoUploaderPrefs"
         private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 1002
         private const val STORAGE_PERMISSION_REQUEST_CODE = 114
     }
