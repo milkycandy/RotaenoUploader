@@ -16,6 +16,7 @@ import android.util.Patterns
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -23,8 +24,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.preference.PreferenceManager
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.color.DynamicColors
@@ -61,15 +62,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
+//        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById(R.id.toolbar))
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        val mainLayout = findViewById<View>(R.id.main)
-        ViewCompat.setOnApplyWindowInsetsListener(mainLayout) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.toolbar)) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            // Apply the insets as a margin to the view. This solution sets
+            // only the top dimension, but you can apply whichever
+            // insets are appropriate to your layout. You can also update the view padding
+            // if that's more appropriate.
+            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                topMargin = insets.top
+            }
+
+            // Return CONSUMED if you don't want the window insets to keep passing
+            // down to descendant views.
+            WindowInsetsCompat.CONSUMED
         }
+
 
         textViewLog = findViewById(R.id.textViewLogContent)
         textViewObjectId = findViewById(R.id.textViewObjectId)
@@ -149,11 +159,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeviceInfo() {
-        val deviceManufacturer = Build.MANUFACTURER
+        val deviceBrand = Build.BRAND
         val deviceModel = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
         val securityPatch = Build.VERSION.SECURITY_PATCH
-        appendLog("设备：$deviceManufacturer | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
+        appendLog("设备：$deviceBrand | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
     }
 
     private fun showLastUploadTime() {
