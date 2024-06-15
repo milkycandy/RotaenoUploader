@@ -15,6 +15,7 @@ import android.util.Log
 import android.util.Patterns
 import android.view.Menu
 import android.view.MenuItem
+import android.view.RoundedCorner
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ProgressBar
@@ -28,6 +29,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.preference.PreferenceManager
 import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.JsonObject
@@ -80,6 +82,7 @@ class MainActivity : AppCompatActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
+        setDeviceCornerRadius()
 
         textViewLog = findViewById(R.id.textViewLogContent)
         textViewObjectId = findViewById(R.id.textViewObjectId)
@@ -156,6 +159,21 @@ class MainActivity : AppCompatActivity() {
         }
         checkDeveloperBirthday()
         showDeviceInfo()
+    }
+
+    private fun setDeviceCornerRadius() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val cardLog: MaterialCardView = findViewById(R.id.card_log)
+
+            // 获取系统窗口插图
+            val rootView = window.decorView.rootView
+            rootView.setOnApplyWindowInsetsListener { _, insets ->
+                val bottomRight = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
+                    ?: return@setOnApplyWindowInsetsListener insets
+                cardLog.radius = bottomRight.radius.toFloat()
+                insets
+            }
+        }
     }
 
     private fun showDeviceInfo() {

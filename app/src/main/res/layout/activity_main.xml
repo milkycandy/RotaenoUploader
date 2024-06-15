@@ -161,14 +161,14 @@
 
             <androidx.core.widget.NestedScrollView
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="8dp">
+                android:layout_height="match_parent">
 
                 <TextView
                     android:id="@+id/textViewLogContent"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text=""
+                    android:padding="16dp"
                     tools:ignore="HardcodedText" />
             </androidx.core.widget.NestedScrollView>
 
