@@ -9,7 +9,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.color.DynamicColors
 
@@ -44,20 +43,14 @@ class SettingsActivity : AppCompatActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
-            val sharedPreferences = context?.let { PreferenceManager.getDefaultSharedPreferences(it) }
-
-            // Get the preferences
             val serverAddressPref: EditTextPreference? = findPreference("remote_server_address")
             val dataAccessBypassPref: SwitchPreferenceCompat? = findPreference("data_access_bypass")
 
-            // Set listeners for preference changes
             serverAddressPref?.setOnPreferenceChangeListener { preference, newValue ->
-                sharedPreferences?.edit()?.putString(preference.key, newValue as String)?.apply()
                 true
             }
 
             dataAccessBypassPref?.setOnPreferenceChangeListener { preference, newValue ->
-                sharedPreferences?.edit()?.putBoolean(preference.key, newValue as Boolean)?.apply()
                 true
             }
         }

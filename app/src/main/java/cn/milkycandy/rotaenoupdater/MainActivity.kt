@@ -301,10 +301,10 @@ class MainActivity : AppCompatActivity() {
             val sharedPreferences =
                 PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-            var url = sharedPreferences.getString("remote_server_address", "")
+            val url = sharedPreferences.getString("remote_server_address", "")
 
             // 留空就是默认
-            if (url == "" || url == null) {
+            if (url.isNullOrEmpty()) {
                 showSnackBar("服务器地址未设置，请前往设置")
                 hideLoading()
                 delayedCheck.cancel()
