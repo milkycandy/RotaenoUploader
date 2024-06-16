@@ -64,7 +64,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
-//        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_main)
         setSupportActionBar(findViewById(R.id.toolbar))
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.toolbar)) { v, windowInsets ->
@@ -177,12 +176,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showDeviceInfo() {
+        val deviceManufacturer = Build.MANUFACTURER
         val deviceBrand = Build.BRAND
         val deviceModel = Build.MODEL
         val androidVersion = Build.VERSION.RELEASE
         val securityPatch = Build.VERSION.SECURITY_PATCH
-        appendLog("设备：$deviceBrand | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch")
+
+        // 判断品牌和制造商是否一致
+        val brandManufacturerDisplay = if (deviceManufacturer == deviceBrand) {
+            deviceBrand // 只显示品牌
+        } else {
+            "$deviceBrand ($deviceManufacturer)" // 显示品牌和制造商
+        }
+        val versionName = getString(R.string.app_version)
+        appendLog("设备：$brandManufacturerDisplay | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
     }
+
 
     private fun showLastUploadTime() {
         // 显示上次上传时间
