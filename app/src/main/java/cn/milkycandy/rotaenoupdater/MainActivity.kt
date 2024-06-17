@@ -27,6 +27,7 @@ import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
+import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
@@ -62,6 +63,21 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        // 检查是否已经写入过这个设置
+        val isFirstRun =
+            sharedPreferences.getBoolean("is_first_run", true)
+
+        if (isFirstRun) {
+            val intent = Intent(this, WelcomeActivity::class.java)
+            intent.putExtra("source", "MainActivity")
+            startActivity(intent)
+            finish()
+            return
+        }
+
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
@@ -81,7 +97,7 @@ class MainActivity : AppCompatActivity() {
             WindowInsetsCompat.CONSUMED
         }
 
-        setDeviceCornerRadius()
+        setCornerRadius()
 
         textViewLog = findViewById(R.id.textViewLogContent)
         textViewObjectId = findViewById(R.id.textViewObjectId)
@@ -90,7 +106,6 @@ class MainActivity : AppCompatActivity() {
         textViewLastUploadTime = findViewById(R.id.lastUploadTime)
 
         // 恢复用户的选择状态
-        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
         if (selectedButtonId != View.NO_ID) {
             toggleGroup.check(selectedButtonId)
@@ -105,19 +120,10 @@ class MainActivity : AppCompatActivity() {
 
         showLastUploadTime()
 
-        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        // 检查是否已经写入过这个设置
-        val isDataAccessBypassWritten =
-            settingsPreferences.getBoolean("data_access_bypass_written", false)
-
-        // 如果尚未写入过即为首次启动，如果系统版本是安卓11及以上，则写入true（开启data限制绕过），并设置写入标记
-        if (!isDataAccessBypassWritten && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            settingsPreferences.edit().putBoolean("data_access_bypass", true)
-                .putBoolean("data_access_bypass_written", true).apply()
+        val selectedMode = settingsPreferences.getString("selected_mode", null)
+        if (selectedMode == "traditional") {
+            requestPermissions()
         }
-
-        requestPermissions()
-
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
         // 初始化上传MaterialCardView
@@ -129,23 +135,11 @@ class MainActivity : AppCompatActivity() {
             if (checkedButtonId == View.NO_ID) {
                 showSnackBar("请先选择一个版本")
             } else {
-                // 读取是否开启了data限制绕过(data_access_bypass的值)，如果开启则插入零宽空格以绕过限制
-                // 这个绕过方法并不适用于所有设备 仅在小米14 Pro HyperOS 1.0.42.0.UNBCNXM 安全更新2024-06-01 测试可用，其他设备没试，主要是没有
-                val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
-                val gamePath = if (dataAccessBypass) {
-                    when (checkedButtonId) {
-                        R.id.buttonPlay -> "Andro\u200Bid/data/com.xd.rotaeno.googleplay"
-                        R.id.buttonGlobal -> "Andro\u200Bid/data/com.xd.rotaeno.tapio"
-                        R.id.buttonChina -> "Andro\u200Bid/data/com.xd.rotaeno.tapcn"
-                        else -> null
-                    }
-                } else {
-                    when (checkedButtonId) {
-                        R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
-                        R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
-                        R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
-                        else -> null
-                    }
+                val gamePath = when (checkedButtonId) {
+                    R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
+                    R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
+                    R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
+                    else -> null
                 }
                 if (gamePath != null) {
                     getGameData(gamePath)
@@ -160,7 +154,7 @@ class MainActivity : AppCompatActivity() {
         showDeviceInfo()
     }
 
-    private fun setDeviceCornerRadius() {
+    private fun setCornerRadius() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val cardLog: MaterialCardView = findViewById(R.id.card_log)
 
@@ -189,7 +183,7 @@ class MainActivity : AppCompatActivity() {
             "$deviceBrand ($deviceManufacturer)" // 显示品牌和制造商
         }
         val versionName = getString(R.string.app_version)
-        appendLog("设备：$brandManufacturerDisplay | $deviceModel\n系统: Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
+        appendLog("设备：$brandManufacturerDisplay | $deviceModel\n系统：Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
     }
 
 
@@ -259,10 +253,116 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        if (data == null || resultCode != RESULT_OK) {
+            if (requestCode == DATA_REQUEST_CODE) {
+                Toast.makeText(this, "操作被取消", Toast.LENGTH_SHORT).show()
+                hideLoading()
+            }
+            return
+        }
+        if (requestCode == DATA_REQUEST_CODE) {
+            val documentUri = data.data ?: return
+            val documentFile = DocumentFile.fromTreeUri(this, documentUri) ?: return
+            val filesFolder = documentFile.findFile("files") ?: return
+            val rotaenoFolder = filesFolder.findFile("RotaenoLC") ?: return
+            val userDataFile = rotaenoFolder.findFile(".userdata") ?: return
+
+            if (!userDataFile.exists() || !userDataFile.isFile) {
+                appendLog("失败，.userdata文件不存在或无法访问")
+                hideLoading()
+                return
+            }
+
+            try {
+                val jsonString = contentResolver.openInputStream(userDataFile.uri)?.bufferedReader()
+                    ?.use { it.readText() }
+                val jsonObject = JsonParser.parseString(jsonString).asJsonObject
+                val objectId = jsonObject.get("objectId").asString
+                Log.d("RotaenoUploader", "objectId: $objectId")
+                runOnUiThread {
+                    textViewObjectId.text = objectId
+                }
+                val gameSaveFileName = sha256ToHex("GameSave$objectId")
+                val gameSaveFile = filesFolder.findFile(gameSaveFileName) ?: return
+
+                if (!gameSaveFile.exists() || !gameSaveFile.isFile) {
+                    appendLog("错误：GameSave不存在或不是文件")
+                    hideLoading()
+                    return
+                }
+                var fileContentBytes: ByteArray?
+                gameSaveFile?.let {
+                    try {
+                        contentResolver.openInputStream(it.uri).use { inputStream ->
+                            fileContentBytes = inputStream?.readBytes()
+                            fileContentBytes?.let { bytes ->
+                                val encodedContent = Base64.encodeToString(bytes, Base64.DEFAULT)
+                                // appendLog("Encoded GameSave file:\n$encodedContent")
+
+                                appendLog("正在发送数据到服务器...")
+                                postGameData(objectId, encodedContent)
+                            } ?: run {
+                                appendLog("GameSave文件为空或无法读取")
+                                hideLoading()
+                            }
+                        }
+                    } catch (e: IOException) {
+                        appendLog("读取GameSave文件时出错：${e.message}")
+                        Log.e("RotaenoUpdater", "Error reading GameSave file", e)
+                        hideLoading()
+                    }
+                }
+
+            } catch (e: Exception) {
+                appendLog("读取文件失败: ${e.message}")
+                hideLoading()
+            }
+        }
+
     }
 
     private fun getGameData(path: String) {
+        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        val selectedMode = settingsPreferences.getString("selected_mode", null)
+        var processedPath = path
+        val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
+        if (dataAccessBypass) {
+            Log.d("RotaenoUploader", "已开启data绕过")
+            processedPath = processedPath.replace("Android", "Andro\u200Bid")
+        }
+        when (selectedMode) {
+            "traditional" -> {
+                getGameDataByFile(processedPath)
+                Log.d("RotaenoUploader", "File Path: $processedPath")
+            }
+
+            "saf" -> {
+                processedPath = processedPath.replace("/", "%2F")
+                getGameDataBySAF(processedPath)
+                Log.d("RotaenoUploader", "SAF Path: $processedPath")
+            }
+
+            else -> {
+                Toast.makeText(this, "未知的模式！", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+
+    private fun getGameDataBySAF(path: String) {
         showLoading()
+        val uri =
+            Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$path/document/primary%3A$path")
+        val intent = Intent("android.intent.action.OPEN_DOCUMENT_TREE")
+        intent.putExtra("android.provider.extra.INITIAL_URI", uri)
+        Toast.makeText(this, "请直接点击底部的“使用此文件夹”", Toast.LENGTH_SHORT).show()
+        startActivityForResult(intent, DATA_REQUEST_CODE)
+    }
+
+    private fun getGameDataByFile(path: String) {
+        showLoading()
+        Log.d("RotaenoUploader", "Path: $path")
         appendLog("正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
             val filePath = "/storage/emulated/0/$path/files/RotaenoLC/.userdata"
@@ -338,14 +438,16 @@ class MainActivity : AppCompatActivity() {
             val sharedPreferences =
                 PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-            val url = sharedPreferences.getString("remote_server_address", "")
+            var url = sharedPreferences.getString("remote_server_address", "")
 
             // 留空就是默认
             if (url.isNullOrEmpty()) {
-                showSnackBar("服务器地址未设置，请前往设置")
-                hideLoading()
-                delayedCheck.cancel()
-                return@launch
+                url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
+                appendLog("正在使用默认服务器地址")
+//                showSnackBar("服务器地址未设置，请前往设置")
+//                hideLoading()
+//                delayedCheck.cancel()
+//                return@launch
             }
             if (!Patterns.WEB_URL.matcher(url).matches()) {
                 showSnackBar("服务器地址无效")
@@ -431,7 +533,8 @@ class MainActivity : AppCompatActivity() {
         private const val PREF_KEY_LAST_UPLOAD_TIME = "last_upload_time"
         private const val PREF_KEY_SELECTED_BUTTON = "selected_button"
         private const val PREFS_NAME = "RotaenoUploaderPrefs"
-        private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 1002
+        private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 514
         private const val STORAGE_PERMISSION_REQUEST_CODE = 114
+        private const val DATA_REQUEST_CODE = 1919
     }
 }

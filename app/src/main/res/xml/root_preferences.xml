@@ -16,7 +16,13 @@
 
     <!-- Data Access Bypass -->
     <PreferenceCategory
-        android:title="高级">
+        android:title="运行模式">
+
+        <Preference
+            app:key="selected_mode"
+            android:title="运行模式"
+            android:summary=""
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
             app:key="data_access_bypass"

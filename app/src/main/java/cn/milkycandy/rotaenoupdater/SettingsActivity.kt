@@ -1,5 +1,6 @@
 package cn.milkycandy.rotaenoupdater
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
@@ -7,9 +8,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.preference.EditTextPreference
+import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.SwitchPreferenceCompat
+import androidx.preference.PreferenceManager
 import com.google.android.material.color.DynamicColors
 
 class SettingsActivity : AppCompatActivity() {
@@ -18,7 +19,7 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
-        setContentView(R.layout.settings_activity)
+        setContentView(R.layout.activity_settings)
         // Ensure the window content fits the system windows
         WindowCompat.setDecorFitsSystemWindows(window, false)
         // Apply window insets to the main layout
@@ -43,16 +44,38 @@ class SettingsActivity : AppCompatActivity() {
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
-            val serverAddressPref: EditTextPreference? = findPreference("remote_server_address")
-            val dataAccessBypassPref: SwitchPreferenceCompat? = findPreference("data_access_bypass")
+            updatePreferencesSummary()
 
-            serverAddressPref?.setOnPreferenceChangeListener { preference, newValue ->
+            val selectedModePref: Preference? = findPreference("selected_mode")
+
+            selectedModePref?.setOnPreferenceClickListener {
+                val intent = Intent(requireContext(), WelcomeActivity::class.java)
+                intent.putExtra("source", "SettingsActivity")
+                startActivity(intent)
                 true
             }
+        }
 
-            dataAccessBypassPref?.setOnPreferenceChangeListener { preference, newValue ->
-                true
+        override fun onResume() {
+            super.onResume()
+            updatePreferencesSummary()
+        }
+
+        private fun updatePreferencesSummary() {
+            val selectedModePref: Preference? = findPreference("selected_mode")
+            val settingsPreferences =
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+            val selectedMode = settingsPreferences.getString("selected_mode", "未选择")
+            selectedModePref?.summaryProvider = Preference.SummaryProvider<Preference> {
+                val modeDescription = when (selectedMode) {
+                    "traditional" -> "传统"
+                    "saf" -> "SAF（安卓存储访问框架）"
+                    else -> "未选择"
+                }
+                "当前模式：$modeDescription"
             }
+//            val switchPreference: SwitchPreferenceCompat? = findPreference("data_access_bypass")
+//            switchPreference?.isVisible = selectedMode != "saf"
         }
     }
 }

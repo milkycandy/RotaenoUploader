@@ -12,8 +12,8 @@ android {
         applicationId = "cn.milkycandy.rotaenoupdater"
         minSdk = 24
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.6.1"
+        versionCode = 15
+        versionName = "1.7.0 beta 2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,6 +47,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.preference:preference-ktx:1.2.1")
+    implementation("androidx.activity:activity:1.9.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
