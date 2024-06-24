@@ -12,9 +12,10 @@ RotaenoUploader 可以上传游戏 Rotaeno （旋转音律） 的保存数据到
 
 ## 截图
 
-|             主界面             |               设置               |              欢迎向导               |
-|:---------------------------:|:------------------------------:|:-------------------------------:|
-| ![主界面](Screenshot_Main.png) | ![设置](Screenshot_Settings.png) | ![欢迎界面](Screenshot_Welcome.png) |
+| 欢迎向导 | 主界面 | 设置 |
+|:------:|:----:|:-------:|
+| ![欢迎界面](Screenshot_Welcome.png) | ![主界面](Screenshot_Main.png) | ![设置](Screenshot_Settings.png) |
+
 
 ## 使用说明
 
