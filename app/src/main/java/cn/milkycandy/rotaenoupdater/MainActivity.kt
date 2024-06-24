@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -66,64 +67,20 @@ class MainActivity : AppCompatActivity() {
 
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        // 检查是否已经写入过这个设置
-        val isFirstRun =
-            sharedPreferences.getBoolean("is_first_run", true)
 
-        if (isFirstRun) {
-            val intent = Intent(this, WelcomeActivity::class.java)
-            intent.putExtra("source", "MainActivity")
-            startActivity(intent)
-            finish()
-            return
-        }
+        if (isFirstRun(sharedPreferences)) return
 
-        DynamicColors.applyToActivityIfAvailable(this)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        setSupportActionBar(findViewById(R.id.toolbar))
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.toolbar)) { v, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            // Apply the insets as a margin to the view. This solution sets
-            // only the top dimension, but you can apply whichever
-            // insets are appropriate to your layout. You can also update the view padding
-            // if that's more appropriate.
-            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                topMargin = insets.top
-            }
-
-            // Return CONSUMED if you don't want the window insets to keep passing
-            // down to descendant views.
-            WindowInsetsCompat.CONSUMED
-        }
-
+        setupUI()
         setCornerRadius()
 
-        textViewLog = findViewById(R.id.textViewLogContent)
-        textViewObjectId = findViewById(R.id.textViewObjectId)
-        progressBar = findViewById(R.id.progressBar)
-        toggleGroup = findViewById(R.id.toggleButton)
-        textViewLastUploadTime = findViewById(R.id.lastUploadTime)
-
-        // 恢复用户的选择状态
-        val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
-        if (selectedButtonId != View.NO_ID) {
-            toggleGroup.check(selectedButtonId)
-        }
-        toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                sharedPreferences.edit {
-                    putInt(PREF_KEY_SELECTED_BUTTON, checkedId)
-                }
-            }
-        }
-
+        initializeViews()
+        restoreSelectedState(sharedPreferences)
         showLastUploadTime()
 
-        val selectedMode = settingsPreferences.getString("selected_mode", null)
-        if (selectedMode == "traditional") {
+        if (settingsPreferences.getString("selected_mode", null) == "traditional") {
             requestPermissions()
         }
+
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
         // 初始化上传MaterialCardView
@@ -150,8 +107,34 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
         checkDeveloperBirthday()
         showDeviceInfo()
+    }
+
+    private fun isFirstRun(sharedPreferences: SharedPreferences): Boolean {
+        val isFirstRun = sharedPreferences.getBoolean("is_first_run", true)
+        if (isFirstRun) {
+            startActivity(Intent(this, WelcomeActivity::class.java).apply {
+                putExtra("source", "MainActivity")
+            })
+            finish()
+            return true
+        }
+        return false
+    }
+
+    private fun setupUI() {
+        DynamicColors.applyToActivityIfAvailable(this)
+        enableEdgeToEdge()
+        setContentView(R.layout.activity_main)
+        setSupportActionBar(findViewById(R.id.toolbar))
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.toolbar)) { v, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = insets.top }
+            WindowInsetsCompat.CONSUMED
+        }
     }
 
     private fun setCornerRadius() {
@@ -165,6 +148,43 @@ class MainActivity : AppCompatActivity() {
                     ?: return@setOnApplyWindowInsetsListener insets
                 cardLog.radius = bottomRight.radius.toFloat()
                 insets
+            }
+        }
+    }
+
+    private fun initializeViews() {
+        textViewLog = findViewById(R.id.textViewLogContent)
+        textViewObjectId = findViewById(R.id.textViewObjectId)
+        progressBar = findViewById(R.id.progressBar)
+        toggleGroup = findViewById(R.id.toggleButton)
+        textViewLastUploadTime = findViewById(R.id.lastUploadTime)
+    }
+
+    private fun restoreSelectedState(sharedPreferences: SharedPreferences) {
+        val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
+        if (selectedButtonId != View.NO_ID) {
+            toggleGroup.check(selectedButtonId)
+        }
+        toggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                sharedPreferences.edit { putInt(PREF_KEY_SELECTED_BUTTON, checkedId) }
+            }
+        }
+    }
+
+    private fun showLastUploadTime() {
+        // 显示上次上传时间
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastUploadTime = sharedPreferences.getLong(PREF_KEY_LAST_UPLOAD_TIME, 0L)
+        if (lastUploadTime != 0L) {
+            val lastUploadDate = Date(lastUploadTime)
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+            runOnUiThread {
+                textViewLastUploadTime.text = "上次上传于: ${dateFormat.format(lastUploadDate)}"
+            }
+        } else {
+            runOnUiThread {
+                textViewLastUploadTime.text = "从未上传过"
             }
         }
     }
@@ -184,24 +204,6 @@ class MainActivity : AppCompatActivity() {
         }
         val versionName = getString(R.string.app_version)
         appendLog("设备：$brandManufacturerDisplay | $deviceModel\n系统：Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
-    }
-
-
-    private fun showLastUploadTime() {
-        // 显示上次上传时间
-        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val lastUploadTime = sharedPreferences.getLong(PREF_KEY_LAST_UPLOAD_TIME, 0L)
-        if (lastUploadTime != 0L) {
-            val lastUploadDate = Date(lastUploadTime)
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            runOnUiThread {
-                textViewLastUploadTime.text = "上次上传于: ${dateFormat.format(lastUploadDate)}"
-            }
-        } else {
-            runOnUiThread {
-                textViewLastUploadTime.text = "从未上传过"
-            }
-        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -225,35 +227,17 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
-                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG)
-                    .show()
-                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                startActivityForResult(intent, MANAGE_EXTERNAL_STORAGE_REQUEST_CODE)
+                Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG).show()
+                startActivityForResult(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION), MANAGE_EXTERNAL_STORAGE_REQUEST_CODE)
             }
         } else {
-            // Android 11以下的权限请求
-            val permissions = arrayOf(
-                android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
-            requestPermissions(permissions, STORAGE_PERMISSION_REQUEST_CODE)
+            requestPermissions(arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE), STORAGE_PERMISSION_REQUEST_CODE)
         }
     }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == MANAGE_EXTERNAL_STORAGE_REQUEST_CODE) {
-            // 上面判断过一次了，但是这里不判断又会warning，那再判断一次好了，也挺保险的
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                if (Environment.isExternalStorageManager()) {
-                    Toast.makeText(this, "所有文件访问权限授予成功", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "未授予所有文件访问权限！", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-
         if (data == null || resultCode != RESULT_OK) {
             if (requestCode == DATA_REQUEST_CODE) {
                 Toast.makeText(this, "操作被取消", Toast.LENGTH_SHORT).show()
@@ -261,65 +245,15 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        if (requestCode == DATA_REQUEST_CODE) {
-            val documentUri = data.data ?: return
-            val documentFile = DocumentFile.fromTreeUri(this, documentUri) ?: return
-            val filesFolder = documentFile.findFile("files") ?: return
-            val rotaenoFolder = filesFolder.findFile("RotaenoLC") ?: return
-            val userDataFile = rotaenoFolder.findFile(".userdata") ?: return
-
-            if (!userDataFile.exists() || !userDataFile.isFile) {
-                appendLog("失败，.userdata文件不存在或无法访问")
-                hideLoading()
-                return
+        if (requestCode == MANAGE_EXTERNAL_STORAGE_REQUEST_CODE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (Environment.isExternalStorageManager()) {
+                Toast.makeText(this, "所有文件访问权限授予成功", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "未授予所有文件访问权限！", Toast.LENGTH_LONG).show()
             }
-
-            try {
-                val jsonString = contentResolver.openInputStream(userDataFile.uri)?.bufferedReader()
-                    ?.use { it.readText() }
-                val jsonObject = JsonParser.parseString(jsonString).asJsonObject
-                val objectId = jsonObject.get("objectId").asString
-                Log.d("RotaenoUploader", "objectId: $objectId")
-                runOnUiThread {
-                    textViewObjectId.text = objectId
-                }
-                val gameSaveFileName = sha256ToHex("GameSave$objectId")
-                val gameSaveFile = filesFolder.findFile(gameSaveFileName) ?: return
-
-                if (!gameSaveFile.exists() || !gameSaveFile.isFile) {
-                    appendLog("错误：GameSave不存在或不是文件")
-                    hideLoading()
-                    return
-                }
-                var fileContentBytes: ByteArray?
-                gameSaveFile?.let {
-                    try {
-                        contentResolver.openInputStream(it.uri).use { inputStream ->
-                            fileContentBytes = inputStream?.readBytes()
-                            fileContentBytes?.let { bytes ->
-                                val encodedContent = Base64.encodeToString(bytes, Base64.DEFAULT)
-                                // appendLog("Encoded GameSave file:\n$encodedContent")
-
-                                appendLog("正在发送数据到服务器...")
-                                postGameData(objectId, encodedContent)
-                            } ?: run {
-                                appendLog("GameSave文件为空或无法读取")
-                                hideLoading()
-                            }
-                        }
-                    } catch (e: IOException) {
-                        appendLog("读取GameSave文件时出错：${e.message}")
-                        Log.e("RotaenoUpdater", "Error reading GameSave file", e)
-                        hideLoading()
-                    }
-                }
-
-            } catch (e: Exception) {
-                appendLog("读取文件失败: ${e.message}")
-                hideLoading()
-            }
+        } else if (requestCode == DATA_REQUEST_CODE) {
+            handleDocumentResult(data)
         }
-
     }
 
     private fun getGameData(path: String) {
@@ -360,13 +294,77 @@ class MainActivity : AppCompatActivity() {
         startActivityForResult(intent, DATA_REQUEST_CODE)
     }
 
+    private fun handleDocumentResult(data: Intent) {
+        val documentUri = data.data ?: return
+        val documentFile = DocumentFile.fromTreeUri(this, documentUri) ?: return
+        val filesFolder = documentFile.findFile("files") ?: return
+        val rotaenoFolder = filesFolder.findFile("RotaenoLC") ?: return
+        val userDataFile = rotaenoFolder.findFile(".userdata") ?: return
+
+        if (!userDataFile.exists() || !userDataFile.isFile) {
+            appendLog("失败：.userdata文件不存在或无法访问")
+            hideLoading()
+            return
+        }
+
+        try {
+            val jsonString = contentResolver.openInputStream(userDataFile.uri)?.bufferedReader()?.use { it.readText() }
+            val jsonObject = JsonParser.parseString(jsonString).asJsonObject
+            val objectId = jsonObject.get("objectId").asString
+            Log.d("RotaenoUploader", "objectId: $objectId")
+            runOnUiThread { textViewObjectId.text = objectId }
+
+            val gameSaveFileName = sha256ToHex("GameSave$objectId")
+            val gameSaveFile = filesFolder.findFile(gameSaveFileName)
+
+            if (gameSaveFile == null || !gameSaveFile.exists() || !gameSaveFile.isFile) {
+                appendLog("失败：GameSave文件不存在或无法访问")
+                hideLoading()
+                return
+            }
+
+            val gameSaveData = contentResolver.openInputStream(gameSaveFile.uri)?.use { it.readBytes() }
+            if (gameSaveData != null) {
+                val encodedGameSaveData = Base64.encodeToString(gameSaveData, Base64.DEFAULT)
+                CoroutineScope(Dispatchers.IO).launch {
+                    postGameData(objectId, encodedGameSaveData)
+                }
+            } else {
+                appendLog("失败：无法读取GameSave文件内容")
+                hideLoading()
+            }
+        } catch (e: IOException) {
+            Log.e("RotaenoUploader", "Error reading .userdata file: ${e.message}")
+            appendLog("读取.userdata文件时出错: ${e.message}")
+            hideLoading()
+        }
+    }
+
+    private fun getUploadUrl() : String {
+        val sharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(applicationContext)
+
+        var url = sharedPreferences.getString("remote_server_address", "")
+
+        // 留空就是默认
+        if (url.isNullOrEmpty()) {
+            url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
+            appendLog("正在使用默认服务器地址")
+//                showSnackBar("服务器地址未设置，请前往设置")
+//                hideLoading()
+//                delayedCheck.cancel()
+//                return@launch
+        }
+        return url
+    }
+
     private fun getGameDataByFile(path: String) {
         showLoading()
         Log.d("RotaenoUploader", "Path: $path")
         appendLog("正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
             val filePath = "/storage/emulated/0/$path/files/RotaenoLC/.userdata"
-            Log.d("MainActivity", "File path: $filePath")
+            Log.d("RotaenoUploader", "File path: $filePath")
             val file = File(filePath)
 
             if (file.exists() && file.isFile) {
@@ -379,7 +377,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     val gameSaveFileName = sha256ToHex("GameSave$objectId")
                     val gameSaveFilePath = "/storage/emulated/0/$path/files/$gameSaveFileName"
-                    Log.d("MainActivity", "GameSave file path: $gameSaveFilePath")
+                    Log.d("RotaenoUploader", "GameSave file path: $gameSaveFilePath")
                     val gameSaveFile = File(gameSaveFilePath)
                     if (gameSaveFile.exists() && gameSaveFile.isFile) {
                         try {
@@ -387,10 +385,10 @@ class MainActivity : AppCompatActivity() {
                                 .use { inputStream ->
                                     val fileContentBytes = inputStream?.readBytes()
                                     fileContentBytes?.let { bytes ->
-                                        val encodedContent =
+                                        val encodedGameSaveData =
                                             Base64.encodeToString(bytes, Base64.DEFAULT)
                                         appendLog("正在发送数据到服务器...")
-                                        postGameData(objectId, encodedContent)
+                                        postGameData(objectId, encodedGameSaveData)
                                     } ?: run {
                                         appendLog("GameSave文件为空或无法读取")
                                         hideLoading()
@@ -430,25 +428,13 @@ class MainActivity : AppCompatActivity() {
 
             val jsonString = json.toString()
 
-//          appendLog("即将发送的数据: $jsonString")
+//            appendLog("即将发送的数据: $jsonString")
 
             val requestBody =
                 jsonString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
-            val sharedPreferences =
-                PreferenceManager.getDefaultSharedPreferences(applicationContext)
+            val url = getUploadUrl()
 
-            var url = sharedPreferences.getString("remote_server_address", "")
-
-            // 留空就是默认
-            if (url.isNullOrEmpty()) {
-                url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
-                appendLog("正在使用默认服务器地址")
-//                showSnackBar("服务器地址未设置，请前往设置")
-//                hideLoading()
-//                delayedCheck.cancel()
-//                return@launch
-            }
             if (!Patterns.WEB_URL.matcher(url).matches()) {
                 showSnackBar("服务器地址无效")
                 appendLog("无效的服务器地址: $url")
@@ -457,7 +443,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val request = Request.Builder().url(url.toString()).post(requestBody).build()
+            val request = Request.Builder().url(url).post(requestBody).build()
 
             val client = OkHttpClient()
             try {
