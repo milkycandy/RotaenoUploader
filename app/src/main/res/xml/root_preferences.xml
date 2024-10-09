@@ -16,13 +16,18 @@
 
     <!-- Data Access Bypass -->
     <PreferenceCategory
-        android:title="运行模式">
+        android:title="运行">
 
         <Preference
             app:key="selected_mode"
             android:title="运行模式"
             android:summary=""
             app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="disable_shizuku_check"
+            android:title="禁用Shizuku检查"
+            android:summary="忽略Shizuku安装及服务运行状态" />
 
         <SwitchPreferenceCompat
             app:key="data_access_bypass"

@@ -76,11 +76,14 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 "当前模式：$modeDescription"
             }
-            val bypassDataAccess : SwitchPreferenceCompat? = findPreference("data_access_bypass")
+            val bypassDataAccess: SwitchPreferenceCompat? = findPreference("data_access_bypass")
+            val disableShizukuCheck: SwitchPreferenceCompat? = findPreference("disable_shizuku_check")
             if (settingsPreferences.getString("selected_mode", "未选择") == "shizuku") {
                 bypassDataAccess?.isVisible = false
+                disableShizukuCheck?.isVisible = true
             } else {
                 bypassDataAccess?.isVisible = true
+                disableShizukuCheck?.isVisible = false
             }
 
 

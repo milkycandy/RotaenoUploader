@@ -301,6 +301,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getGameData(packageName: String) {
         val selectedMode = settingsPreferences.getString("selected_mode", null)
+        val isShizukuCheckDisabled = settingsPreferences.getBoolean("disable_shizuku_check", false)
 
         when (selectedMode) {
             "traditional" -> {
@@ -310,7 +311,7 @@ class MainActivity : AppCompatActivity() {
                 getGameDataBySAF(packageName)
             }
             "shizuku" -> {
-                checkShizukuStatus(this)
+                if (!isShizukuCheckDisabled) checkShizukuStatus(this)
                 if (Shizuku.pingBinder()) {
                     readUserDataWithShizuku(packageName)
                 }
