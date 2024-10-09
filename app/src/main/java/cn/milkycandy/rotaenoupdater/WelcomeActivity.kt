@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.Settings
 import android.widget.RadioButton
 import android.widget.RadioGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -31,21 +32,24 @@ class WelcomeActivity : AppCompatActivity() {
         val isDataAccessBypassWritten =
             settingsPreferences.getBoolean("data_access_bypass_written", false)
 
-        // 如果尚未写入过即为首次启动，如果系统版本是安卓11及以上，则写入true（开启data限制绕过），并设置写入标记
-        if (!isDataAccessBypassWritten && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // 如果尚未写入过即为首次启动，如果系统版本是安卓13以上，则写入true（开启data限制绕过），并设置写入标记
+        if (!isDataAccessBypassWritten && Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
             settingsPreferences.edit().putBoolean("data_access_bypass", true)
                 .putBoolean("data_access_bypass_written", true).apply()
         }
 
-        val modeSelectionGroup: RadioGroup = findViewById(R.id.mode_selection_group)
-        val finishFab: ExtendedFloatingActionButton = findViewById(R.id.finish_fab)
+        val modeSelectionGroup: RadioGroup = findViewById(R.id.modeSelectionRadioGroup)
+        val finishFab: ExtendedFloatingActionButton = findViewById(R.id.finishFab)
 
         val selectedMode = settingsPreferences.getString("selected_mode", null)
         when (selectedMode) {
-            "traditional" -> modeSelectionGroup.check(R.id.traditional_mode)
-            "saf" -> modeSelectionGroup.check(R.id.saf_mode)
-            "shizuku" -> modeSelectionGroup.check(R.id.shizuku_mode)
+            "traditional" -> modeSelectionGroup.check(R.id.traditionalModeButton)
+            "saf" -> modeSelectionGroup.check(R.id.safModeButton)
+            "shizuku" -> modeSelectionGroup.check(R.id.shizukuModeButton)
         }
+
+        val androidVersionTextView: TextView = findViewById(R.id.androidVersionTextView)
+        androidVersionTextView.text = "您的设备运行Android ${Build.VERSION.RELEASE}"
 
 //        modeSelectionGroup.setOnCheckedChangeListener { group, checkedId ->
 //            when (checkedId) {
@@ -66,18 +70,18 @@ class WelcomeActivity : AppCompatActivity() {
             val source = intent.getStringExtra("source")
 
             when (selectedMode?.id) {
-                R.id.traditional_mode -> {
+                R.id.traditionalModeButton -> {
                     settingsPreferences.edit().putString("selected_mode", "traditional").apply()
                     if (source == "SettingsActivity") {
                         requestPermissions()
                     }
                 }
 
-                R.id.saf_mode -> {
+                R.id.safModeButton -> {
                     settingsPreferences.edit().putString("selected_mode", "saf").apply()
                 }
 
-                R.id.shizuku_mode -> {
+                R.id.shizukuModeButton -> {
                     checkShizukuPermission()
                     settingsPreferences.edit().putString("selected_mode", "shizuku").apply()
                 }

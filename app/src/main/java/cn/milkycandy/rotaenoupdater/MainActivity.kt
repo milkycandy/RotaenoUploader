@@ -115,6 +115,7 @@ class MainActivity : AppCompatActivity() {
         setupUploadCard()
     }
 
+    // 用于用户切换模式后重新初始化，我感觉这个实践并不好
     override fun onResume() {
         super.onResume()
         val mode = settingsPreferences.getString("selected_mode", null)
@@ -135,6 +136,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 检查是否首次运行，用于首次使用时启动WelcomeActivity让用户选择工作模式
     private fun checkIfFirstRun(): Boolean {
         val isFirstRun = sharedPreferences.getBoolean("is_first_run", true)
         if (isFirstRun) {
@@ -147,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    // 设置动态颜色、启用边到边布局（状态栏和小白条沉浸）、配置顶部Toolbar，设置视图边距以免布局被遮挡
     private fun setupUI() {
         DynamicColors.applyToActivityIfAvailable(this)
         enableEdgeToEdge()
@@ -160,9 +163,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 获取右下屏幕圆角半径并配置到Log卡片上
     private fun setCornerRadius() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val cardLog: MaterialCardView = findViewById(R.id.card_log)
+            val cardLog: MaterialCardView = findViewById(R.id.logMaterialCardView)
 
             val rootView = window.decorView.rootView
             rootView.setOnApplyWindowInsetsListener { _, insets ->
@@ -175,13 +179,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializeViews() {
-        textViewLog = findViewById(R.id.textViewLogContent)
-        textViewObjectId = findViewById(R.id.textViewObjectId)
+        textViewLog = findViewById(R.id.logTextView)
+        textViewObjectId = findViewById(R.id.objectIdTextView)
         progressBar = findViewById(R.id.progressBar)
         toggleGroup = findViewById(R.id.toggleButton)
-        textViewLastUploadTime = findViewById(R.id.lastUploadTime)
+        textViewLastUploadTime = findViewById(R.id.lastUploadTimeTextView)
     }
 
+    // 恢复上次选中的游戏版本
     private fun restoreSelectedState() {
         val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
         if (selectedButtonId != View.NO_ID) {
@@ -210,7 +215,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUploadCard() {
-        val cardUpload = findViewById<View>(R.id.card_upload)
+        val cardUpload = findViewById<View>(R.id.uploadMaterialCardView)
         cardUpload.setOnClickListener {
             if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
             val checkedButtonId = toggleGroup.checkedButtonId

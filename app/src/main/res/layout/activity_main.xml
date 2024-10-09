@@ -35,7 +35,7 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_upload"
+            android:id="@+id/uploadMaterialCardView"
             app:cardElevation="0dp"
             style="?attr/materialCardViewFilledStyle"
             android:layout_width="match_parent"
@@ -74,7 +74,7 @@
                         android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
 
                     <TextView
-                        android:id="@+id/lastUploadTime"
+                        android:id="@+id/lastUploadTimeTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:paddingVertical="4dp"
@@ -92,7 +92,7 @@
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/card_upload"
+            app:layout_constraintTop_toBottomOf="@id/uploadMaterialCardView"
             app:singleSelection="true">
 
             <Button
@@ -125,7 +125,7 @@
 
 
         <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/textViewObjectIdGuide"
+            android:id="@+id/objectIdLabelTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -138,7 +138,7 @@
             app:layout_constraintTop_toBottomOf="@id/toggleButton" />
 
         <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/textViewObjectId"
+            android:id="@+id/objectIdTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -149,17 +149,17 @@
             android:textSize="24sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textViewObjectIdGuide"
+            app:layout_constraintTop_toBottomOf="@id/objectIdLabelTextView"
             tools:ignore="HardcodedText" />
 
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/card_log"
+            android:id="@+id/logMaterialCardView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/textViewObjectId"
+            app:layout_constraintTop_toBottomOf="@id/objectIdTextView"
             app:layout_constraintBottom_toBottomOf="parent">
 
             <androidx.core.widget.NestedScrollView
@@ -167,7 +167,7 @@
                 android:layout_height="match_parent">
 
                 <TextView
-                    android:id="@+id/textViewLogContent"
+                    android:id="@+id/logTextView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text=""

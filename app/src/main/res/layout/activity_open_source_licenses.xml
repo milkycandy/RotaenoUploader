@@ -12,7 +12,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/tv_open_source_title"
+            android:id="@+id/openSourceTitleTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Open Source Licenses"
@@ -22,7 +22,7 @@
             android:paddingBottom="16dp"/>
 
         <TextView
-            android:id="@+id/tv_open_source_content"
+            android:id="@+id/openSourceContentTextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="14sp"

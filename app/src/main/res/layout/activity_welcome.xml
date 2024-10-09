@@ -10,7 +10,7 @@
 
     <!-- 欢迎使用App的标题 -->
     <TextView
-        android:id="@+id/welcome_text"
+        android:id="@+id/welcomeTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="64dp"
@@ -22,27 +22,27 @@
 
     <!-- 请选择模式的提示文案 -->
     <TextView
-        android:id="@+id/choose_mode_text"
+        android:id="@+id/chooseModeText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="请选择工作模式"
         android:textSize="18sp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/welcome_text" />
+        app:layout_constraintTop_toBottomOf="@id/welcomeTextView" />
 
     <!-- 模式选择的RadioGroup -->
     <RadioGroup
-        android:id="@+id/mode_selection_group"
+        android:id="@+id/modeSelectionRadioGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:orientation="vertical"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/choose_mode_text">
+        app:layout_constraintTop_toBottomOf="@id/chooseModeText">
 
         <RadioButton
-            android:id="@+id/traditional_mode"
+            android:id="@+id/traditionalModeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -51,7 +51,7 @@
             android:textSize="16sp" />
 
         <RadioButton
-            android:id="@+id/saf_mode"
+            android:id="@+id/safModeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
@@ -59,7 +59,7 @@
             android:textSize="16sp" />
 
         <RadioButton
-            android:id="@+id/shizuku_mode"
+            android:id="@+id/shizukuModeButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
@@ -69,6 +69,7 @@
 
     <!-- 解释模式的MaterialCardView -->
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/modeDescriptionCardView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
@@ -76,10 +77,10 @@
         app:contentPadding="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/mode_selection_group">
+        app:layout_constraintTop_toBottomOf="@id/modeSelectionRadioGroup">
 
         <TextView
-            android:id="@+id/mode_description"
+            android:id="@+id/modeDescriptionButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="通常选择“传统”模式即可。如果应用不能正常工作，你可以尝试手动切换模式。\n如果所有模式都无法正常工作，请联系开发者或者在Github上提交Issue。\n你可以在设置中重新选择模式。\n\n本应用在GitHub开源，你可以在设置中查看。"
@@ -87,9 +88,21 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <TextView
+        android:id="@+id/androidVersionTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="您的设备运行 Android unknown"
+        android:layout_marginTop="4dp"
+        app:layout_constraintTop_toBottomOf="@id/modeDescriptionCardView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:textStyle="italic"
+        android:textColor="#808080"/>
+
     <!-- 右下角的完成按钮 -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/finish_fab"
+        android:id="@+id/finishFab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
