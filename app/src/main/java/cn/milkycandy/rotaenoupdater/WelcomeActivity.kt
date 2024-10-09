@@ -49,7 +49,6 @@ class WelcomeActivity : AppCompatActivity() {
             val selectedMode = findViewById<RadioButton>(selectedModeId)
             val source = intent.getStringExtra("source")
 
-            // Perform actions based on the selected mode
             when (selectedMode?.id) {
                 R.id.traditional_mode -> {
                     settingsPreferences.edit().putString("selected_mode", "traditional").apply()

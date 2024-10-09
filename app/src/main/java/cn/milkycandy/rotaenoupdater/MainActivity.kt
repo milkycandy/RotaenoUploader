@@ -28,27 +28,18 @@ import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
-import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
+import cn.milkycandy.rotaenoupdater.helpers.FileHelper
+import cn.milkycandy.rotaenoupdater.helpers.NetworkHelper
+import cn.milkycandy.rotaenoupdater.helpers.UIHelper
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.snackbar.Snackbar
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.File
-import java.io.IOException
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -62,8 +53,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var toggleGroup: MaterialButtonToggleGroup
 
+    private lateinit var fileHelper: FileHelper
+    private lateinit var networkHelper: NetworkHelper
+    private lateinit var uiHelper: UIHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        fileHelper = FileHelper(this)
+        networkHelper = NetworkHelper()
+        uiHelper = UIHelper(this)
 
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
@@ -83,32 +82,8 @@ class MainActivity : AppCompatActivity() {
 
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
-        // 初始化上传MaterialCardView
-        val cardUpload = findViewById<View>(R.id.card_upload)
-        cardUpload.setOnClickListener {
-            // 如果进度条可见，即为正在上传，不响应点击
-            if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
-            val checkedButtonId = toggleGroup.checkedButtonId
-            if (checkedButtonId == View.NO_ID) {
-                showSnackBar("请先选择一个版本")
-            } else {
-                val gamePath = when (checkedButtonId) {
-                    R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
-                    R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
-                    R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
-                    else -> null
-                }
-                if (gamePath != null) {
-                    getGameData(gamePath)
-                    // 保存上一次的上传时间
-                    sharedPreferences.edit {
-                        putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
-                    }
-                }
-            }
-        }
+        setupUploadCard(sharedPreferences)
 
-        checkDeveloperBirthday()
         showDeviceInfo()
     }
 
@@ -141,7 +116,6 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val cardLog: MaterialCardView = findViewById(R.id.card_log)
 
-            // 获取系统窗口插图
             val rootView = window.decorView.rootView
             rootView.setOnApplyWindowInsetsListener { _, insets ->
                 val bottomRight = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT)
@@ -173,7 +147,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLastUploadTime() {
-        // 显示上次上传时间
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val lastUploadTime = sharedPreferences.getLong(PREF_KEY_LAST_UPLOAD_TIME, 0L)
         if (lastUploadTime != 0L) {
@@ -189,6 +162,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupUploadCard(sharedPreferences: SharedPreferences) {
+        val cardUpload = findViewById<View>(R.id.card_upload)
+        cardUpload.setOnClickListener {
+            if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
+            val checkedButtonId = toggleGroup.checkedButtonId
+            if (checkedButtonId == View.NO_ID) {
+                uiHelper.showSnackBar("请先选择一个版本")
+            } else {
+                val gamePath = when (checkedButtonId) {
+                    R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
+                    R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
+                    R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
+                    else -> null
+                }
+                if (gamePath != null) {
+                    getGameData(gamePath)
+                    sharedPreferences.edit {
+                        putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
+                    }
+                }
+            }
+        }
+    }
+
     private fun showDeviceInfo() {
         val deviceManufacturer = Build.MANUFACTURER
         val deviceBrand = Build.BRAND
@@ -196,14 +193,13 @@ class MainActivity : AppCompatActivity() {
         val androidVersion = Build.VERSION.RELEASE
         val securityPatch = Build.VERSION.SECURITY_PATCH
 
-        // 判断品牌和制造商是否一致
         val brandManufacturerDisplay = if (deviceManufacturer == deviceBrand) {
-            deviceBrand // 只显示品牌
+            deviceBrand
         } else {
-            "$deviceBrand ($deviceManufacturer)" // 显示品牌和制造商
+            "$deviceBrand ($deviceManufacturer)"
         }
         val versionName = getString(R.string.app_version)
-        appendLog("设备：$brandManufacturerDisplay | $deviceModel\n系统：Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
+        uiHelper.appendLog(textViewLog, "设备：$brandManufacturerDisplay | $deviceModel\n系统：Android $androidVersion | 安全补丁 $securityPatch\n上传器版本：$versionName")
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -214,12 +210,10 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.settings -> {
-                // 启动 SettingsActivity
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)
                 true
             }
-
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -241,7 +235,7 @@ class MainActivity : AppCompatActivity() {
         if (data == null || resultCode != RESULT_OK) {
             if (requestCode == DATA_REQUEST_CODE) {
                 Toast.makeText(this, "操作被取消", Toast.LENGTH_SHORT).show()
-                hideLoading()
+                uiHelper.hideLoading(progressBar)
             }
             return
         }
@@ -270,193 +264,122 @@ class MainActivity : AppCompatActivity() {
                 getGameDataByFile(processedPath)
                 Log.d("RotaenoUploader", "File Path: $processedPath")
             }
-
             "saf" -> {
                 processedPath = processedPath.replace("/", "%2F")
                 getGameDataBySAF(processedPath)
                 Log.d("RotaenoUploader", "SAF Path: $processedPath")
             }
-
             else -> {
                 Toast.makeText(this, "未知的模式！", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-
     private fun getGameDataBySAF(path: String) {
-        showLoading()
-        val uri =
-            Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$path/document/primary%3A$path")
+        uiHelper.showLoading(progressBar)
+        val uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$path/document/primary%3A$path")
         val intent = Intent("android.intent.action.OPEN_DOCUMENT_TREE")
         intent.putExtra("android.provider.extra.INITIAL_URI", uri)
-        Toast.makeText(this, "请直接点击底部的“使用此文件夹”", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "请直接点击底部的\"使用此文件夹\"", Toast.LENGTH_SHORT).show()
         startActivityForResult(intent, DATA_REQUEST_CODE)
     }
 
     private fun handleDocumentResult(data: Intent) {
         val documentUri = data.data ?: return
-        val documentFile = DocumentFile.fromTreeUri(this, documentUri) ?: return
-        val filesFolder = documentFile.findFile("files") ?: return
-        val rotaenoFolder = filesFolder.findFile("RotaenoLC") ?: return
-        val userDataFile = rotaenoFolder.findFile(".userdata") ?: return
+        val (objectId, gameSaveData) = fileHelper.handleDocumentResult(documentUri)
 
-        if (!userDataFile.exists() || !userDataFile.isFile) {
-            appendLog("失败：.userdata文件不存在或无法访问")
-            hideLoading()
+        if (objectId == null) {
+            uiHelper.appendLog(textViewLog, "失败：.userdata文件不存在或无法访问")
+            uiHelper.hideLoading(progressBar)
             return
         }
 
-        try {
-            val jsonString = contentResolver.openInputStream(userDataFile.uri)?.bufferedReader()?.use { it.readText() }
-            val jsonObject = JsonParser.parseString(jsonString).asJsonObject
-            val objectId = jsonObject.get("objectId").asString
-            Log.d("RotaenoUploader", "objectId: $objectId")
-            runOnUiThread { textViewObjectId.text = objectId }
+        runOnUiThread { textViewObjectId.text = objectId }
 
-            val gameSaveFileName = sha256ToHex("GameSave$objectId")
-            val gameSaveFile = filesFolder.findFile(gameSaveFileName)
+        if (gameSaveData == null) {
+            uiHelper.appendLog(textViewLog, "失败：GameSave文件不存在或无法访问")
+            uiHelper.hideLoading(progressBar)
+            return
+        }
 
-            if (gameSaveFile == null || !gameSaveFile.exists() || !gameSaveFile.isFile) {
-                appendLog("失败：GameSave文件不存在或无法访问")
-                hideLoading()
-                return
-            }
-
-            val gameSaveData = contentResolver.openInputStream(gameSaveFile.uri)?.use { it.readBytes() }
-            if (gameSaveData != null) {
-                val encodedGameSaveData = Base64.encodeToString(gameSaveData, Base64.DEFAULT)
-                CoroutineScope(Dispatchers.IO).launch {
-                    postGameData(objectId, encodedGameSaveData)
-                }
-            } else {
-                appendLog("失败：无法读取GameSave文件内容")
-                hideLoading()
-            }
-        } catch (e: IOException) {
-            Log.e("RotaenoUploader", "Error reading .userdata file: ${e.message}")
-            appendLog("读取.userdata文件时出错: ${e.message}")
-            hideLoading()
+        val encodedGameSaveData = Base64.encodeToString(gameSaveData, Base64.DEFAULT)
+        CoroutineScope(Dispatchers.IO).launch {
+            postGameData(objectId, encodedGameSaveData)
         }
     }
 
-    private fun getUploadUrl() : String {
-        val sharedPreferences =
-            PreferenceManager.getDefaultSharedPreferences(applicationContext)
-
+    private fun getUploadUrl(): String {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         var url = sharedPreferences.getString("remote_server_address", "")
-
-        // 留空就是默认
         if (url.isNullOrEmpty()) {
             url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
-            appendLog("正在使用默认服务器地址")
-//                showSnackBar("服务器地址未设置，请前往设置")
-//                hideLoading()
-//                delayedCheck.cancel()
-//                return@launch
+            uiHelper.appendLog(textViewLog, "正在使用默认服务器地址")
         }
         return url
     }
 
     private fun getGameDataByFile(path: String) {
-        showLoading()
+        uiHelper.showLoading(progressBar)
         Log.d("RotaenoUploader", "Path: $path")
-        appendLog("正在尝试获取游戏数据...")
+        uiHelper.appendLog(textViewLog, "正在尝试获取游戏数据...")
         CoroutineScope(Dispatchers.IO).launch {
             val filePath = "/storage/emulated/0/$path/files/RotaenoLC/.userdata"
             Log.d("RotaenoUploader", "File path: $filePath")
-            val file = File(filePath)
+            val jsonObject = fileHelper.readUserData(filePath)
 
-            if (file.exists() && file.isFile) {
-                try {
-                    val jsonString = file.readText()
-                    val jsonObject = JsonParser.parseString(jsonString).asJsonObject
-                    val objectId = jsonObject.get("objectId").asString
-                    runOnUiThread {
-                        textViewObjectId.text = objectId
-                    }
-                    val gameSaveFileName = sha256ToHex("GameSave$objectId")
-                    val gameSaveFilePath = "/storage/emulated/0/$path/files/$gameSaveFileName"
-                    Log.d("RotaenoUploader", "GameSave file path: $gameSaveFilePath")
-                    val gameSaveFile = File(gameSaveFilePath)
-                    if (gameSaveFile.exists() && gameSaveFile.isFile) {
-                        try {
-                            contentResolver.openInputStream(Uri.fromFile(gameSaveFile))
-                                .use { inputStream ->
-                                    val fileContentBytes = inputStream?.readBytes()
-                                    fileContentBytes?.let { bytes ->
-                                        val encodedGameSaveData =
-                                            Base64.encodeToString(bytes, Base64.DEFAULT)
-                                        appendLog("正在发送数据到服务器...")
-                                        postGameData(objectId, encodedGameSaveData)
-                                    } ?: run {
-                                        appendLog("GameSave文件为空或无法读取")
-                                        hideLoading()
-                                    }
-                                }
-                        } catch (e: IOException) {
-                            appendLog("读取GameSave文件时出错：${e.message}")
-                            Log.e("RotaenoUploader", "Error reading GameSave file", e)
-                            hideLoading()
-                        }
-                    } else {
-                        appendLog("错误：GameSaveFile doesn't exist or isn't file")
-                        hideLoading()
-                    }
-                } catch (e: Exception) {
-                    appendLog("读取文件失败: ${e.message}")
-                    hideLoading()
+            if (jsonObject != null) {
+                val objectId = jsonObject.get("objectId").asString
+                runOnUiThread {
+                    textViewObjectId.text = objectId
+                }
+
+                val gameSaveFileName = fileHelper.sha256ToHex("GameSave$objectId")
+                val gameSaveFilePath = "/storage/emulated/0/$path/files/$gameSaveFileName"
+                Log.d("RotaenoUploader", "GameSave file path: $gameSaveFilePath")
+                val gameSaveData = fileHelper.readGameSaveFile(gameSaveFilePath)
+
+                if (gameSaveData != null) {
+                    val encodedGameSaveData = Base64.encodeToString(gameSaveData, Base64.DEFAULT)
+                    uiHelper.appendLog(textViewLog, "正在发送数据到服务器...")
+                    postGameData(objectId, encodedGameSaveData)
+                } else {
+                    uiHelper.appendLog(textViewLog, "GameSave文件为空或无法读取")
+                    uiHelper.hideLoading(progressBar)
                 }
             } else {
-                appendLog("失败，文件不存在或无法访问")
-                hideLoading()
+                uiHelper.appendLog(textViewLog, "失败，文件不存在或无法访问")
+                uiHelper.hideLoading(progressBar)
             }
         }
     }
-
 
     private fun postGameData(objectId: String, gameSaveData: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val delayedCheck = launch {
                 delay(6000)
-                appendLog("目标服务器响应缓慢，仍在上传中...")
+                uiHelper.appendLog(textViewLog, "目标服务器响应缓慢，仍在上传中...")
             }
-
-            val json = JsonObject()
-            json.addProperty("object-id", objectId)
-            json.addProperty("save-data", gameSaveData)
-
-            val jsonString = json.toString()
-
-//            appendLog("即将发送的数据: $jsonString")
-
-            val requestBody =
-                jsonString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
 
             val url = getUploadUrl()
 
             if (!Patterns.WEB_URL.matcher(url).matches()) {
-                showSnackBar("服务器地址无效")
-                appendLog("无效的服务器地址: $url")
-                hideLoading()
+                uiHelper.showSnackBar("服务器地址无效")
+                uiHelper.appendLog(textViewLog, "无效的服务器地址: $url")
+                uiHelper.hideLoading(progressBar)
                 delayedCheck.cancel()
                 return@launch
             }
 
-            val request = Request.Builder().url(url).post(requestBody).build()
-
-            val client = OkHttpClient()
-            try {
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string()
-                appendLog("来自Bot的回复: $responseBody")
+            val responseBody = networkHelper.postGameData(url, objectId, gameSaveData)
+            if (responseBody != null) {
+                uiHelper.appendLog(textViewLog, "来自Bot的回复: $responseBody")
                 showLastUploadTime()
-            } catch (e: IOException) {
-                appendLog("发送数据失败: ${e.message}")
-            } finally {
-                delayedCheck.cancel()
-                hideLoading()
+            } else {
+                uiHelper.appendLog(textViewLog, "发送数据失败")
             }
+
+            delayedCheck.cancel()
+            uiHelper.hideLoading(progressBar)
         }
     }
 
@@ -464,55 +387,7 @@ class MainActivity : AppCompatActivity() {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("objectId", text)
         clipboard.setPrimaryClip(clip)
-        showSnackBar("已复制ObjectId到剪切板")
-    }
-
-    private fun sha256ToHex(input: String): String {
-        val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-        return bytes.joinToString("") { "%02x".format(it) }
-    }
-
-    private fun appendLog(message: String, addNewLine: Boolean = true) {
-        runOnUiThread {
-            if (addNewLine) {
-                textViewLog.append(message + "\n")
-            } else {
-                textViewLog.append(message)
-            }
-        }
-    }
-
-    private fun showSnackBar(message: String) {
-        runOnUiThread {
-            Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
-        }
-    }
-
-    private fun showLoading() {
-        runOnUiThread {
-            progressBar.visibility = View.VISIBLE
-        }
-    }
-
-    private fun hideLoading() {
-        runOnUiThread {
-            progressBar.visibility = View.GONE
-        }
-    }
-
-    private fun checkDeveloperBirthday() {
-        val calendar = Calendar.getInstance()
-        val dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH)
-        val month = calendar.get(Calendar.MONTH) + 1 // 月份是从0开始的，所以需要+1
-
-        // 检查当前日期是否是6月25日
-        if (month == 6 && dayOfMonth == 25) {
-            // 如果是6月25日，显示SnackBar
-            val view = findViewById<View>(android.R.id.content)
-            Snackbar.make(
-                view, "你知道吗？\n今天是这个软件的开发者 大块牛奶糖 的生日", Snackbar.LENGTH_LONG
-            ).show()
-        }
+        uiHelper.showSnackBar("已复制ObjectId到剪切板")
     }
 
     companion object {
