@@ -40,6 +40,10 @@
             android:summary="大块牛奶糖" />
 
         <Preference
+            android:title="版本号"
+            android:summary="@string/app_version"/>
+
+        <Preference
             app:title="在 Github 上查看此开源项目"
             android:summary="点击跳转">
             <intent
@@ -47,9 +51,11 @@
                 android:data="https://github.com/milkycandy/RotaenoUploader" />
         </Preference>
 
-        <Preference
-            android:title="版本号"
-            android:summary="@string/app_version"/>
+        <Preference app:title="开放源代码许可" android:summary="点击查看">
+            <intent android:action="android.intent.action.MAIN"
+                android:targetPackage="cn.milkycandy.rotaenoupdater"
+                android:targetClass="cn.milkycandy.rotaenoupdater.OpenSourceLicensesActivity" />
+        </Preference>
 
     </PreferenceCategory>
 

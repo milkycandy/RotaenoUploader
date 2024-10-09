@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="?android:attr/windowBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_open_source_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Source Licenses"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/tv_open_source_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:paddingBottom="16dp"
+            android:lineSpacingExtra="4dp"
+            android:textIsSelectable="true"
+            android:text="1. Gson - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/google/gson\n\n2. OkHttp - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/square/okhttp \n\n使用Shizuku读取文件的方法参考了以下文章，在此表示感谢。\nMagicianGuo1126\nhttps://blog.csdn.net/gjc91126/article/details/136574829"/>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

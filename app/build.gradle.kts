@@ -12,8 +12,8 @@ android {
         applicationId = "cn.milkycandy.rotaenoupdater"
         minSdk = 24
         targetSdk = 34
-        versionCode = 15
-        versionName = "1.7.0 beta 2"
+        versionCode = 17
+        versionName = "1.8.0 beta 1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
