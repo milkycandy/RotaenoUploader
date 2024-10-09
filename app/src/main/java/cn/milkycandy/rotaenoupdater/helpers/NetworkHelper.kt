@@ -8,9 +8,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class NetworkHelper {
+    data class PostResult(
+        val isSuccess: Boolean,
+        val errorMessage: String? = null
+    )
     private val client = OkHttpClient()
 
-    fun postGameData(url: String, objectId: String, gameSaveData: String): String? {
+    fun postGameData(url: String, objectId: String, gameSaveData: String): PostResult {
         val json = JsonObject().apply {
             addProperty("object-id", objectId)
             addProperty("save-data", gameSaveData)
@@ -21,9 +25,13 @@ class NetworkHelper {
 
         return try {
             val response = client.newCall(request).execute()
-            response.body?.string()
+            if (response.isSuccessful) {
+                PostResult(true) // 成功，没有错误信息
+            } else {
+                PostResult(false, "Error: ${response.code} ${response.message}") // 请求失败，返回错误信息
+            }
         } catch (e: IOException) {
-            null
+            PostResult(false, "Exception: ${e.message}") // 捕获异常并返回错误信息
         }
     }
 }

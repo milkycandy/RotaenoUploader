@@ -87,7 +87,7 @@
 
         <com.google.android.material.button.MaterialButtonToggleGroup
             android:id="@+id/toggleButton"
-            android:layout_width="340dp"
+            android:layout_width="320dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             app:layout_constraintEnd_toEndOf="parent"
@@ -101,7 +101,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/tap_cn" />
+                android:text="@string/tap_cn"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/buttonGlobal"
@@ -109,7 +110,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/tap_global" />
+                android:text="@string/tap_global"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/buttonPlay"
@@ -117,7 +119,8 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/google_ver" />
+                android:text="@string/google_ver"
+                android:textSize="12sp" />
         </com.google.android.material.button.MaterialButtonToggleGroup>
 
 

@@ -57,6 +57,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var networkHelper: NetworkHelper
     private lateinit var uiHelper: UIHelper
 
+    private lateinit var sharedPreferences: SharedPreferences
+    private lateinit var settingsPreferences: SharedPreferences
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -64,16 +67,16 @@ class MainActivity : AppCompatActivity() {
         networkHelper = NetworkHelper()
         uiHelper = UIHelper(this)
 
-        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
 
-        if (isFirstRun(sharedPreferences)) return
+        checkIfFirstRun()
 
         setupUI()
         setCornerRadius()
 
         initializeViews()
-        restoreSelectedState(sharedPreferences)
+        restoreSelectedState()
         showLastUploadTime()
 
         if (settingsPreferences.getString("selected_mode", null) == "traditional") {
@@ -82,12 +85,12 @@ class MainActivity : AppCompatActivity() {
 
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
-        setupUploadCard(sharedPreferences)
+        setupUploadCard()
 
         showDeviceInfo()
     }
 
-    private fun isFirstRun(sharedPreferences: SharedPreferences): Boolean {
+    private fun checkIfFirstRun(): Boolean {
         val isFirstRun = sharedPreferences.getBoolean("is_first_run", true)
         if (isFirstRun) {
             startActivity(Intent(this, WelcomeActivity::class.java).apply {
@@ -134,7 +137,7 @@ class MainActivity : AppCompatActivity() {
         textViewLastUploadTime = findViewById(R.id.lastUploadTime)
     }
 
-    private fun restoreSelectedState(sharedPreferences: SharedPreferences) {
+    private fun restoreSelectedState() {
         val selectedButtonId = sharedPreferences.getInt(PREF_KEY_SELECTED_BUTTON, View.NO_ID)
         if (selectedButtonId != View.NO_ID) {
             toggleGroup.check(selectedButtonId)
@@ -147,7 +150,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLastUploadTime() {
-        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val lastUploadTime = sharedPreferences.getLong(PREF_KEY_LAST_UPLOAD_TIME, 0L)
         if (lastUploadTime != 0L) {
             val lastUploadDate = Date(lastUploadTime)
@@ -162,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupUploadCard(sharedPreferences: SharedPreferences) {
+    private fun setupUploadCard() {
         val cardUpload = findViewById<View>(R.id.card_upload)
         cardUpload.setOnClickListener {
             if (progressBar.visibility == View.VISIBLE) return@setOnClickListener
@@ -178,9 +180,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (gamePath != null) {
                     getGameData(gamePath)
-                    sharedPreferences.edit {
-                        putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
-                    }
                 }
             }
         }
@@ -229,7 +228,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
+    @Deprecated("This method has been deprecated in favor of using the Activity Result API\n      which brings increased type safety via an {@link ActivityResultContract} and the prebuilt\n      contracts for common intents available in\n      {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for\n      testing, and allow receiving results in separate, testable classes independent from your\n      activity. Use\n      {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}\n      with the appropriate {@link ActivityResultContract} and handling the result in the\n      {@link ActivityResultCallback#onActivityResult(Object) callback}.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (data == null || resultCode != RESULT_OK) {
@@ -251,7 +250,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getGameData(path: String) {
-        val settingsPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val selectedMode = settingsPreferences.getString("selected_mode", null)
         var processedPath = path
         val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
@@ -309,8 +307,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getUploadUrl(): String {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        var url = sharedPreferences.getString("remote_server_address", "")
+        var url = settingsPreferences.getString("remote_server_address", "")
         if (url.isNullOrEmpty()) {
             url = "http://rotaeno.api.mihoyo.pw/decryptAndSaveGameData"
             uiHelper.appendLog(textViewLog, "正在使用默认服务器地址")
@@ -370,12 +367,19 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
 
-            val responseBody = networkHelper.postGameData(url, objectId, gameSaveData)
-            if (responseBody != null) {
-                uiHelper.appendLog(textViewLog, "来自Bot的回复: $responseBody")
+            val postResult = networkHelper.postGameData(url, objectId, gameSaveData)
+            if (postResult.isSuccess) {
+                uiHelper.appendLog(textViewLog, "上传成功！", false)
+
+                val uploadCount = sharedPreferences.getLong(PREF_KEY_UPLOAD_COUNT, 0) + 1
+                sharedPreferences.edit {
+                    putLong(PREF_KEY_LAST_UPLOAD_TIME, System.currentTimeMillis())
+                    putLong(PREF_KEY_UPLOAD_COUNT, uploadCount)
+                }
                 showLastUploadTime()
+                uiHelper.appendLog(textViewLog, "RotaenoUploader已为您成功上传 $uploadCount 次！")
             } else {
-                uiHelper.appendLog(textViewLog, "发送数据失败")
+                uiHelper.appendLog(textViewLog, "发送数据失败: ${postResult.errorMessage}")
             }
 
             delayedCheck.cancel()
@@ -392,6 +396,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val PREF_KEY_LAST_UPLOAD_TIME = "last_upload_time"
+        private const val PREF_KEY_UPLOAD_COUNT = "upload_count"
         private const val PREF_KEY_SELECTED_BUTTON = "selected_button"
         private const val PREFS_NAME = "RotaenoUploaderPrefs"
         private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 514
