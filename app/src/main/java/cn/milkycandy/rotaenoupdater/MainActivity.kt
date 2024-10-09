@@ -3,13 +3,17 @@ package cn.milkycandy.rotaenoupdater
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.IBinder
 import android.provider.Settings
 import android.util.Base64
 import android.util.Log
@@ -32,13 +36,19 @@ import androidx.preference.PreferenceManager
 import cn.milkycandy.rotaenoupdater.helpers.FileHelper
 import cn.milkycandy.rotaenoupdater.helpers.NetworkHelper
 import cn.milkycandy.rotaenoupdater.helpers.UIHelper
+import cn.milkycandy.rotaenoupdater.services.FileService
+import cn.milkycandy.rotaenoupdater.services.IFileService
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.gson.JsonParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import rikka.shizuku.Shizuku
+import rikka.shizuku.shared.BuildConfig
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -60,8 +70,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var settingsPreferences: SharedPreferences
 
+    private val fileExplorerService: IFileService?
+        get() = if (Shizuku.pingBinder()) iFileService else null
+    private lateinit var USER_SERVICE_ARGS: Shizuku.UserServiceArgs
+    private var iFileService: IFileService? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d(TAG, "MainActivity onCreate")
 
         fileHelper = FileHelper(this)
         networkHelper = NetworkHelper()
@@ -79,15 +95,41 @@ class MainActivity : AppCompatActivity() {
         restoreSelectedState()
         showLastUploadTime()
 
-        if (settingsPreferences.getString("selected_mode", null) == "traditional") {
-            requestPermissions()
+        showDeviceInfo()
+        val mode = settingsPreferences.getString("selected_mode", null)
+        when (mode) {
+            "traditional" -> {
+                requestFilePermissions()
+            }
+            "shizuku" -> {
+                if (checkShizukuPermission()) {
+                    initializeService()
+                }
+            }
         }
 
         textViewObjectId.setOnClickListener { copyToClipboard(textViewObjectId.text) }
 
         setupUploadCard()
+    }
 
-        showDeviceInfo()
+    override fun onResume() {
+        super.onResume()
+        val mode = settingsPreferences.getString("selected_mode", null)
+        Log.d(TAG, "当前模式: $mode")
+        when (mode) {
+            "traditional" -> {
+                requestFilePermissions()
+            }
+            "saf" -> {
+            }
+            "shizuku" -> {
+                setupShizukuListeners()
+            }
+            else -> {
+                Log.e(TAG, "无效的模式: $mode")
+            }
+        }
     }
 
     private fun checkIfFirstRun(): Boolean {
@@ -172,14 +214,14 @@ class MainActivity : AppCompatActivity() {
             if (checkedButtonId == View.NO_ID) {
                 uiHelper.showSnackBar("请先选择一个版本")
             } else {
-                val gamePath = when (checkedButtonId) {
-                    R.id.buttonPlay -> "Android/data/com.xd.rotaeno.googleplay"
-                    R.id.buttonGlobal -> "Android/data/com.xd.rotaeno.tapio"
-                    R.id.buttonChina -> "Android/data/com.xd.rotaeno.tapcn"
+                val packageName = when (checkedButtonId) {
+                    R.id.buttonPlay -> "com.xd.rotaeno.googleplay"
+                    R.id.buttonGlobal -> "com.xd.rotaeno.tapio"
+                    R.id.buttonChina -> "com.xd.rotaeno.tapcn"
                     else -> null
                 }
-                if (gamePath != null) {
-                    getGameData(gamePath)
+                if (packageName != null) {
+                    getGameData(packageName)
                 }
             }
         }
@@ -217,7 +259,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestPermissions() {
+    private fun requestFilePermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 Toast.makeText(this, "请为RotaenoUploader授予文件访问权限！", Toast.LENGTH_LONG).show()
@@ -249,23 +291,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getGameData(path: String) {
+    private fun getGameData(packageName: String) {
         val selectedMode = settingsPreferences.getString("selected_mode", null)
-        var processedPath = path
-        val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
-        if (dataAccessBypass) {
-            Log.d("RotaenoUploader", "已开启data绕过")
-            processedPath = processedPath.replace("Android", "Andro\u200Bid")
-        }
+
         when (selectedMode) {
             "traditional" -> {
-                getGameDataByFile(processedPath)
-                Log.d("RotaenoUploader", "File Path: $processedPath")
+                getGameDataByFile(packageName)
             }
             "saf" -> {
-                processedPath = processedPath.replace("/", "%2F")
-                getGameDataBySAF(processedPath)
-                Log.d("RotaenoUploader", "SAF Path: $processedPath")
+                getGameDataBySAF(packageName)
+            }
+            "shizuku" -> {
+                readUserDataWithShizuku(packageName)
             }
             else -> {
                 Toast.makeText(this, "未知的模式！", Toast.LENGTH_SHORT).show()
@@ -273,9 +310,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getGameDataBySAF(path: String) {
+    private fun getGameDataBySAF(packageName: String) {
         uiHelper.showLoading(progressBar)
-        val uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$path/document/primary%3A$path")
+        var processedPath = "Android%2Fdata%2F$packageName"
+        val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
+        if (dataAccessBypass) {
+            Log.d(TAG, "已开启data绕过")
+            processedPath = processedPath.replace("Android", "Andro\u200Bid")
+        }
+        Log.d(TAG, "SAF Path: $processedPath")
+        val uri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3A$processedPath/document/primary%3A$processedPath")
         val intent = Intent("android.intent.action.OPEN_DOCUMENT_TREE")
         intent.putExtra("android.provider.extra.INITIAL_URI", uri)
         Toast.makeText(this, "请直接点击底部的\"使用此文件夹\"", Toast.LENGTH_SHORT).show()
@@ -315,12 +359,17 @@ class MainActivity : AppCompatActivity() {
         return url
     }
 
-    private fun getGameDataByFile(path: String) {
+    private fun getGameDataByFile(packageName: String) {
         uiHelper.showLoading(progressBar)
-        Log.d("RotaenoUploader", "Path: $path")
         uiHelper.appendLog(textViewLog, "正在尝试获取游戏数据...")
+        var processedPath = "Android/data/$packageName"
+        val dataAccessBypass = settingsPreferences.getBoolean("data_access_bypass", false)
+        if (dataAccessBypass) {
+            Log.d("RotaenoUploader", "已开启data绕过")
+            processedPath = processedPath.replace("Android", "Andro\u200Bid")
+        }
         CoroutineScope(Dispatchers.IO).launch {
-            val filePath = "/storage/emulated/0/$path/files/RotaenoLC/.userdata"
+            val filePath = "/storage/emulated/0/$processedPath/files/RotaenoLC/.userdata"
             Log.d("RotaenoUploader", "File path: $filePath")
             val jsonObject = fileHelper.readUserData(filePath)
 
@@ -331,7 +380,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val gameSaveFileName = fileHelper.sha256ToHex("GameSave$objectId")
-                val gameSaveFilePath = "/storage/emulated/0/$path/files/$gameSaveFileName"
+                val gameSaveFilePath = "/storage/emulated/0/$processedPath/files/$gameSaveFileName"
                 Log.d("RotaenoUploader", "GameSave file path: $gameSaveFilePath")
                 val gameSaveData = fileHelper.readGameSaveFile(gameSaveFilePath)
 
@@ -369,7 +418,7 @@ class MainActivity : AppCompatActivity() {
 
             val postResult = networkHelper.postGameData(url, objectId, gameSaveData)
             if (postResult.isSuccess) {
-                uiHelper.appendLog(textViewLog, "上传成功！", false)
+                uiHelper.appendLog(textViewLog, "上传成功！")
 
                 val uploadCount = sharedPreferences.getLong(PREF_KEY_UPLOAD_COUNT, 0) + 1
                 sharedPreferences.edit {
@@ -377,12 +426,113 @@ class MainActivity : AppCompatActivity() {
                     putLong(PREF_KEY_UPLOAD_COUNT, uploadCount)
                 }
                 showLastUploadTime()
-                uiHelper.appendLog(textViewLog, "RotaenoUploader已为您成功上传 $uploadCount 次！")
+                if (uploadCount == 10L || uploadCount == 25L || uploadCount == 50L || uploadCount == 100L) {
+                    runOnUiThread {
+                        showStarDialog(uploadCount)
+                    }
+                }
+//                uiHelper.appendLog(textViewLog, "RotaenoUploader已为您成功上传 $uploadCount 次")
             } else {
                 uiHelper.appendLog(textViewLog, "发送数据失败: ${postResult.errorMessage}")
             }
 
             delayedCheck.cancel()
+            uiHelper.hideLoading(progressBar)
+        }
+    }
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            Log.d(TAG, "onServiceConnected")
+            iFileService = IFileService.Stub.asInterface(service)
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            Log.d(TAG, "onServiceDisconnected")
+            iFileService = null
+        }
+    }
+
+    private fun initializeService() {
+        USER_SERVICE_ARGS = Shizuku.UserServiceArgs(
+            ComponentName(packageName, FileService::class.java.name)
+        ).daemon(false).debuggable(BuildConfig.DEBUG).processNameSuffix("file_explorer_service").version(1)
+
+        bindService()
+    }
+
+    private fun bindService() {
+        Shizuku.bindUserService(USER_SERVICE_ARGS, serviceConnection)
+    }
+
+    private fun setupShizukuListeners() {
+        // 监听 Shizuku 的权限变化
+        Shizuku.addRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == REQUEST_CODE_SHIZUKU_PERMISSION && grantResult == PackageManager.PERMISSION_GRANTED) {
+                initializeService()  // 用户授予权限后重新初始化服务
+            }
+        }
+
+        // 监听 Shizuku 的启动状态
+        Shizuku.addBinderReceivedListener {
+            if (checkShizukuPermission()) {
+                initializeService()  // Shizuku 启动后重新初始化服务
+            }
+        }
+    }
+
+    private fun checkShizukuPermission(): Boolean {
+        if (!Shizuku.pingBinder()) {
+//            textViewFiles.text = "Shizuku is not running"
+            return false
+        }
+
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(REQUEST_CODE_SHIZUKU_PERMISSION)
+            return false
+        }
+
+        return true
+    }
+
+    private fun readUserDataWithShizuku(packageName: String) {
+        if (checkShizukuPermission()) {
+            initializeService()
+            uiHelper.showLoading(progressBar)
+            fileExplorerService?.let {
+                runCatching {
+                    val fileContent = it.readFile("/storage/emulated/0/Android/data/$packageName/files/RotaenoLC/.userdata")
+                    val jsonObject = JsonParser.parseString(fileContent).asJsonObject
+                    val objectId = jsonObject.get("objectId").asString
+                    runOnUiThread {
+                        textViewObjectId.text = objectId
+                    }
+                    val gameSaveFileName = fileHelper.sha256ToHex("GameSave$objectId")
+                    readGameSaveWithShizuku(packageName, gameSaveFileName, objectId)
+                }.onFailure { e ->
+                    uiHelper.appendLog(textViewLog, "读取文件失败: ${e.message}")
+                    uiHelper.hideLoading(progressBar)
+                }
+            } ?: run {
+                uiHelper.appendLog(textViewLog, "文件服务不可用，请再试一次或重启App")
+                uiHelper.hideLoading(progressBar)
+            }
+        }
+    }
+
+    private fun readGameSaveWithShizuku(packageName: String, fileName: String, objectId: String) {
+        val path = "/storage/emulated/0/Android/data/$packageName/files/$fileName"
+        fileExplorerService?.let {
+            runCatching {
+                val fileContent = it.readBytesAndEncode(path)
+                uiHelper.appendLog(textViewLog, "正在发送数据到服务器...")
+                postGameData(objectId, fileContent)
+            }.onFailure { e ->
+                uiHelper.appendLog(textViewLog, "读取文件失败: ${e.message}")
+                uiHelper.hideLoading(progressBar)
+            }
+        } ?: run {
+            uiHelper.appendLog(textViewLog, "文件服务不可用，请再试一次或重启App")
             uiHelper.hideLoading(progressBar)
         }
     }
@@ -394,7 +544,24 @@ class MainActivity : AppCompatActivity() {
         uiHelper.showSnackBar("已复制ObjectId到剪切板")
     }
 
+    private fun showStarDialog(uploadCount: Long) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("支持一下吧？")
+            .setMessage("RotaenoUploader 已为你成功上传成绩 $uploadCount 次，愿意去 GitHub 点个 Star 吗？")
+            .setPositiveButton("好") { _, _ ->
+                // 打开 GitHub 链接
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/milkycandy/RotaenoUploader"))
+                startActivity(browserIntent)
+            }
+            .setNegativeButton("取消") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
     companion object {
+        private const val TAG = "RotaenoUploader"
         private const val PREF_KEY_LAST_UPLOAD_TIME = "last_upload_time"
         private const val PREF_KEY_UPLOAD_COUNT = "upload_count"
         private const val PREF_KEY_SELECTED_BUTTON = "selected_button"
@@ -402,5 +569,6 @@ class MainActivity : AppCompatActivity() {
         private const val MANAGE_EXTERNAL_STORAGE_REQUEST_CODE = 514
         private const val STORAGE_PERMISSION_REQUEST_CODE = 114
         private const val DATA_REQUEST_CODE = 1919
+        private const val REQUEST_CODE_SHIZUKU_PERMISSION = 1
     }
 }

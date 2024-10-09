@@ -1,7 +1,9 @@
 package cn.milkycandy.rotaenoupdater
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
@@ -12,10 +14,15 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
+import cn.milkycandy.rotaenoupdater.services.FileService
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+import rikka.shizuku.Shizuku
+import rikka.shizuku.shared.BuildConfig
 
 class WelcomeActivity : AppCompatActivity() {
+    private lateinit var USER_SERVICE_ARGS: Shizuku.UserServiceArgs
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +49,20 @@ class WelcomeActivity : AppCompatActivity() {
         when (selectedMode) {
             "traditional" -> modeSelectionGroup.check(R.id.traditional_mode)
             "saf" -> modeSelectionGroup.check(R.id.saf_mode)
+            "shizuku" -> modeSelectionGroup.check(R.id.shizuku_mode)
+        }
+
+        modeSelectionGroup.setOnCheckedChangeListener { group, checkedId ->
+            when (checkedId) {
+                R.id.shizuku_mode -> {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("提示")
+                        .setMessage("Shizuku模式是一个实验性功能，建议仅在其他模式均无法工作时使用。")
+                        .setPositiveButton("好") { _, _ ->
+                        }
+                        .show()
+                }
+            }
         }
 
         finishFab.setOnClickListener {
@@ -59,6 +80,11 @@ class WelcomeActivity : AppCompatActivity() {
 
                 R.id.saf_mode -> {
                     settingsPreferences.edit().putString("selected_mode", "saf").apply()
+                }
+
+                R.id.shizuku_mode -> {
+                    checkShizukuPermission()
+                    settingsPreferences.edit().putString("selected_mode", "shizuku").apply()
                 }
 
                 else -> {
@@ -100,5 +126,20 @@ class WelcomeActivity : AppCompatActivity() {
     companion object {
         private const val PREFS_NAME = "RotaenoUploaderPrefs"
         private const val STORAGE_PERMISSION_REQUEST_CODE = 114
+        private const val REQUEST_CODE_SHIZUKU_PERMISSION = 1
     }
+
+    private fun checkShizukuPermission(): Boolean {
+        if (!Shizuku.pingBinder()) {
+            return false
+        }
+
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(REQUEST_CODE_SHIZUKU_PERMISSION)
+            return false
+        }
+
+        return true
+    }
+
 }

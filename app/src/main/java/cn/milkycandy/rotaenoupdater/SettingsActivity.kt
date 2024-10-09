@@ -70,6 +70,7 @@ class SettingsActivity : AppCompatActivity() {
                 val modeDescription = when (selectedMode) {
                     "traditional" -> "传统"
                     "saf" -> "SAF（安卓存储访问框架）"
+                    "shizuku" -> "Shizuku"
                     else -> "未选择"
                 }
                 "当前模式：$modeDescription"

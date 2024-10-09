@@ -34,7 +34,7 @@
     <!-- 模式选择的RadioGroup -->
     <RadioGroup
         android:id="@+id/mode_selection_group"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:orientation="vertical"
@@ -43,7 +43,7 @@
 
         <RadioButton
             android:id="@+id/traditional_mode"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:checked="true"
             android:padding="8dp"
@@ -52,10 +52,18 @@
 
         <RadioButton
             android:id="@+id/saf_mode"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
             android:text="SAF （安卓存储访问框架）"
+            android:textSize="16sp" />
+
+        <RadioButton
+            android:id="@+id/shizuku_mode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:text="Shizuku"
             android:textSize="16sp" />
     </RadioGroup>
 
@@ -74,7 +82,7 @@
             android:id="@+id/mode_description"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="通常选择“传统”模式即可。如果应用不能正常工作，你可以尝试手动切换模式。\n如果所有模式都无法正常工作，请联系开发者或者在Github上提交Issue。\n你可以在设置中重新选择模式。\n\n本应用在Github开源，你可以在设置中前往查看。"
+            android:text="通常选择“传统”模式即可。如果应用不能正常工作，你可以尝试手动切换模式。\n如果所有模式都无法正常工作，请联系开发者或者在Github上提交Issue。\n你可以在设置中重新选择模式。\n\n本应用在GitHub开源，你可以在设置中查看。"
             android:textSize="16sp" />
 
     </com.google.android.material.card.MaterialCardView>

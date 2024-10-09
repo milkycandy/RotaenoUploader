@@ -44,7 +44,7 @@
             android:summary="@string/app_version"/>
 
         <Preference
-            app:title="在 Github 上查看此开源项目"
+            app:title="在 GitHub 查看源码"
             android:summary="点击跳转">
             <intent
                 android:action="android.intent.action.VIEW"

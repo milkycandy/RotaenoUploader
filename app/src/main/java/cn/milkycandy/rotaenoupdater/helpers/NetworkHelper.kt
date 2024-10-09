@@ -1,5 +1,6 @@
 package cn.milkycandy.rotaenoupdater.helpers
 
+import cn.milkycandy.rotaenoupdater.models.PostResult
 import com.google.gson.JsonObject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
@@ -8,10 +9,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class NetworkHelper {
-    data class PostResult(
-        val isSuccess: Boolean,
-        val errorMessage: String? = null
-    )
+
     private val client = OkHttpClient()
 
     fun postGameData(url: String, objectId: String, gameSaveData: String): PostResult {

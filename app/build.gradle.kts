@@ -37,7 +37,9 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        aidl = true
     }
+    buildToolsVersion = "34.0.0"
 }
 
 dependencies {
@@ -53,6 +55,8 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("dev.rikka.shizuku:api:13.1.5")
+    implementation ("dev.rikka.shizuku:provider:13.1.5")
 //    implementation ("com.huawei.agconnect:agconnect-core:1.9.1.301")
 //    implementation ("com.huawei.agconnect:agconnect-crash:1.9.1.301")
 //    // 1.8.0.300 以后的版本，必须手动集成华为分析SDK

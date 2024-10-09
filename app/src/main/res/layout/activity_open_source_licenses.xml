@@ -29,7 +29,7 @@
             android:paddingBottom="16dp"
             android:lineSpacingExtra="4dp"
             android:textIsSelectable="true"
-            android:text="1. Gson - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/google/gson\n\n2. OkHttp - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/square/okhttp \n\n使用Shizuku读取文件的方法参考了以下文章，在此表示感谢。\nMagicianGuo1126\nhttps://blog.csdn.net/gjc91126/article/details/136574829"/>
+            android:text="1. Gson - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/google/gson\n\n2. OkHttp - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/square/okhttp \n\n3. Shizuku - Apache License 2.0\nhttps://www.apache.org/licenses/LICENSE-2.0\nhttps://github.com/RikkaApps/Shizuku\nhttps://github.com/RikkaApps/Shizuku-API\n\n使用Shizuku读取文件的方法参考了以下文章，在此表示感谢。\nMagicianGuo1126\nhttps://blog.csdn.net/gjc91126/article/details/136574829"/>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
