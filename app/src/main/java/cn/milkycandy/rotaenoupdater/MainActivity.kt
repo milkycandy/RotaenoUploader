@@ -302,7 +302,10 @@ class MainActivity : AppCompatActivity() {
                 getGameDataBySAF(packageName)
             }
             "shizuku" -> {
-                readUserDataWithShizuku(packageName)
+                checkShizukuStatus(this)
+                if (Shizuku.pingBinder()) {
+                    readUserDataWithShizuku(packageName)
+                }
             }
             else -> {
                 Toast.makeText(this, "未知的模式！", Toast.LENGTH_SHORT).show()
@@ -474,11 +477,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         // 监听 Shizuku 的启动状态
-        Shizuku.addBinderReceivedListener {
-            if (checkShizukuPermission()) {
-                initializeService()  // Shizuku 启动后重新初始化服务
-            }
-        }
+//        Shizuku.addBinderReceivedListener {
+//            if (checkShizukuPermission()) {
+//                initializeService()  // Shizuku 启动后重新初始化服务
+//            }
+//        }
     }
 
     private fun checkShizukuPermission(): Boolean {
@@ -558,6 +561,44 @@ class MainActivity : AppCompatActivity() {
             }
             .setCancelable(false)
             .show()
+    }
+    private fun openShizukuApp(context: Context) {
+        val intent = context.packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+        if (intent != null) {
+            context.startActivity(intent)
+        }
+    }
+
+    fun checkShizukuStatus(context: Context) {
+        val isShizukuInstalled = try {
+            context.packageManager.getPackageInfo("moe.shizuku.privileged.api", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+
+        if (!isShizukuInstalled) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("未安装Shizuku")
+                .setMessage("似乎没有找到Shizuku，您需要安装Shizuku才能继续。")
+                .setPositiveButton("下载Shizuku") { _, _ ->
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/RikkaApps/Shizuku/releases"))
+                    startActivity(browserIntent)
+                }
+                .setNegativeButton("取消") { _, _ ->
+                }
+                .show()
+        } else if (!Shizuku.pingBinder()) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Shizuku服务未启动")
+                .setMessage("Shizuku服务似乎没有启动，请先启动Shizuku服务。")
+                .setPositiveButton("打开Shizuku") { _, _ ->
+                    openShizukuApp(this)
+                }
+                .setNegativeButton("取消") { _, _ ->
+                }
+                .show()
+        }
     }
 
     companion object {
