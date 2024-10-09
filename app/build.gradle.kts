@@ -12,16 +12,16 @@ android {
         applicationId = "cn.milkycandy.rotaenoupdater"
         minSdk = 24
         targetSdk = 34
-        versionCode = 17
-        versionName = "1.8.0 beta 1"
+        versionCode = 18
+        versionName = "1.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -102,7 +102,9 @@ class MainActivity : AppCompatActivity() {
                 requestFilePermissions()
             }
             "shizuku" -> {
+                Log.d(TAG, "onCreate: shizuku mode")
                 if (checkShizukuPermission()) {
+                    Log.d(TAG, "onCreate: shizukuPermission granted")
                     initializeService()
                 }
             }
@@ -124,6 +126,7 @@ class MainActivity : AppCompatActivity() {
             "saf" -> {
             }
             "shizuku" -> {
+                Log.d(TAG, "onResume: setupShizukuListeners")
                 setupShizukuListeners()
             }
             else -> {

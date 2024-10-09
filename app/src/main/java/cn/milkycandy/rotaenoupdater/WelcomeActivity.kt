@@ -1,6 +1,5 @@
 package cn.milkycandy.rotaenoupdater
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,15 +13,11 @@ import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
-import cn.milkycandy.rotaenoupdater.services.FileService
 import com.google.android.material.color.DynamicColors
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import rikka.shizuku.Shizuku
-import rikka.shizuku.shared.BuildConfig
 
 class WelcomeActivity : AppCompatActivity() {
-    private lateinit var USER_SERVICE_ARGS: Shizuku.UserServiceArgs
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,18 +47,18 @@ class WelcomeActivity : AppCompatActivity() {
             "shizuku" -> modeSelectionGroup.check(R.id.shizuku_mode)
         }
 
-        modeSelectionGroup.setOnCheckedChangeListener { group, checkedId ->
-            when (checkedId) {
-                R.id.shizuku_mode -> {
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle("提示")
-                        .setMessage("Shizuku模式是一个实验性功能，建议仅在其他模式均无法工作时使用。")
-                        .setPositiveButton("好") { _, _ ->
-                        }
-                        .show()
-                }
-            }
-        }
+//        modeSelectionGroup.setOnCheckedChangeListener { group, checkedId ->
+//            when (checkedId) {
+//                R.id.shizuku_mode -> {
+//                    MaterialAlertDialogBuilder(this)
+//                        .setTitle("提示")
+//                        .setMessage("Shizuku模式是一个实验性功能，建议仅在其他模式均无法工作时使用。")
+//                        .setPositiveButton("好") { _, _ ->
+//                        }
+//                        .show()
+//                }
+//            }
+//        }
 
         finishFab.setOnClickListener {
             val selectedModeId = modeSelectionGroup.checkedRadioButtonId

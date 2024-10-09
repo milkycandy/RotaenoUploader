@@ -11,6 +11,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
+import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.color.DynamicColors
 
 class SettingsActivity : AppCompatActivity() {
@@ -75,6 +76,14 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 "当前模式：$modeDescription"
             }
+            val bypassDataAccess : SwitchPreferenceCompat? = findPreference("data_access_bypass")
+            if (settingsPreferences.getString("selected_mode", "未选择") == "shizuku") {
+                bypassDataAccess?.isVisible = false
+            } else {
+                bypassDataAccess?.isVisible = true
+            }
+
+
 //            val switchPreference: SwitchPreferenceCompat? = findPreference("data_access_bypass")
 //            switchPreference?.isVisible = selectedMode != "saf"
         }
