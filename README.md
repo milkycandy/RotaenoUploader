@@ -1,5 +1,7 @@
 # RotaenoUploader
 
+写的太垃圾了，准备推倒重写了。
+
 ## 简介
 
 RotaenoUploader 可以上传游戏 Rotaeno （旋转音律） 的保存数据到指定服务器，通常用于成绩分析。  
